@@ -78,6 +78,10 @@ fi
 # Set kubectl context
 kubectl config use-context "kind-${CLUSTER_NAME}"
 
+# Label nodes for database workloads (required by Crossplane compositions)
+log_info "Labeling nodes for database workloads..."
+kubectl label nodes --all workload.bizmatters.dev/databases=true --overwrite
+
 # ============================================================================
 # Step 2: Install Crossplane
 # ============================================================================
