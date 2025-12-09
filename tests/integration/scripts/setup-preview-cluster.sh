@@ -252,6 +252,15 @@ if ! bash "$ESO_INJECT_SCRIPT" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY"; th
     exit 6
 fi
 
+# If AWS_SESSION_TOKEN is set (OIDC), add it to the secret
+if [[ -n "${AWS_SESSION_TOKEN:-}" ]]; then
+    log_info "Adding AWS session token to secret (OIDC authentication)..."
+    kubectl patch secret aws-access-token \
+        -n external-secrets \
+        --type merge \
+        -p "{\"data\":{\"AWS_SESSION_TOKEN\":\"$(echo -n "$AWS_SESSION_TOKEN" | base64 -w 0 2>/dev/null || echo -n "$AWS_SESSION_TOKEN" | base64)\"}}"
+fi
+
 log_info "AWS credentials injected successfully"
 
 # ============================================================================
@@ -270,6 +279,22 @@ log_info "Applying ClusterSecretStore from platform..."
 if ! kubectl apply -f "$CLUSTER_SECRET_STORE"; then
     log_error "Failed to apply ClusterSecretStore"
     exit 6
+fi
+
+# If AWS_SESSION_TOKEN is set, patch the ClusterSecretStore to include it
+if [[ -n "${AWS_SESSION_TOKEN:-}" ]]; then
+    log_info "Patching ClusterSecretStore to include session token reference..."
+    kubectl patch clustersecretstore aws-parameter-store --type=json -p='[
+        {
+            "op": "add",
+            "path": "/spec/provider/aws/auth/secretRef/sessionTokenSecretRef",
+            "value": {
+                "name": "aws-access-token",
+                "key": "AWS_SESSION_TOKEN",
+                "namespace": "external-secrets"
+            }
+        }
+    ]'
 fi
 
 # Wait for ClusterSecretStore to be ready

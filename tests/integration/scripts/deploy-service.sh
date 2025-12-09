@@ -106,8 +106,12 @@ if ! kubectl wait externalsecret/agent-executor-llm-keys \
     log_warn "ExternalSecret wait timed out, checking status..."
     log_warn "ExternalSecret status:"
     kubectl get externalsecret -n "$NAMESPACE" agent-executor-llm-keys -o yaml || true
+    log_warn "Checking ClusterSecretStore:"
+    kubectl get clustersecretstore aws-parameter-store -o yaml || true
+    log_warn "Checking AWS credentials secret:"
+    kubectl get secret -n external-secrets aws-access-token || true
     log_warn "Checking ESO pod logs:"
-    kubectl logs -n external-secrets -l app.kubernetes.io/name=external-secrets --tail=20 || true
+    kubectl logs -n external-secrets -l app.kubernetes.io/name=external-secrets --tail=50 || true
 fi
 
 # Wait for the Kubernetes secret to be created
