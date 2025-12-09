@@ -41,10 +41,10 @@ jobs:
     timeout-minutes: 45
     
     steps:
-      - name: Checkout deepagnets-runtime
+      - name: Checkout deepagents-runtime
         uses: actions/checkout@v4
         with:
-          path: deepagnets-runtime
+          path: deepagents-runtime
       
       - name: Clone zerotouch-platform
         uses: actions/checkout@v4
@@ -98,10 +98,10 @@ jobs:
       
       - name: Run integration tests
         id: run_tests
-        working-directory: deepagnets-runtime
+        working-directory: deepagents-runtime
         env:
           ZEROTOUCH_PLATFORM_DIR: ${{ github.workspace }}/zerotouch-platform
-          PLATFORM_BRANCH: ${{ inputs.platform_branch || 'main' }}
+          PLATFORM_BRANCH: ${{ inputs.platform_branch || 'feature/agent-executor' }}
         run: |
           chmod +x scripts/ci/run-integration-tests.sh
           ./scripts/ci/run-integration-tests.sh
@@ -112,9 +112,9 @@ jobs:
         with:
           name: test-results
           path: |
-            deepagnets-runtime/artifacts/test-results.xml
-            deepagnets-runtime/artifacts/coverage.xml
-            deepagnets-runtime/artifacts/htmlcov/
+            deepagents-runtime/artifacts/test-results.xml
+            deepagents-runtime/artifacts/coverage.xml
+            deepagents-runtime/artifacts/htmlcov/
           retention-days: 30
       
       - name: Upload debugging artifacts
@@ -123,21 +123,21 @@ jobs:
         with:
           name: debug-artifacts
           path: |
-            deepagnets-runtime/artifacts/pods.txt
-            deepagnets-runtime/artifacts/keda-scaledobjects.txt
-            deepagnets-runtime/artifacts/crossplane-claims.txt
-            deepagnets-runtime/artifacts/agent-executor-logs.txt
+            deepagents-runtime/artifacts/pods.txt
+            deepagents-runtime/artifacts/keda-scaledobjects.txt
+            deepagents-runtime/artifacts/crossplane-claims.txt
+            deepagents-runtime/artifacts/agent-executor-logs.txt
           retention-days: 30
       
       - name: Parse test results
         if: always() && github.event_name == 'pull_request'
         id: parse_results
         run: |
-          if [ -f deepagnets-runtime/artifacts/test-results.xml ]; then
+          if [ -f deepagents-runtime/artifacts/test-results.xml ]; then
             # Extract test summary from JUnit XML
-            TESTS=$(grep -oP 'tests="\K[0-9]+' deepagnets-runtime/artifacts/test-results.xml | head -1)
-            FAILURES=$(grep -oP 'failures="\K[0-9]+' deepagnets-runtime/artifacts/test-results.xml | head -1)
-            ERRORS=$(grep -oP 'errors="\K[0-9]+' deepagnets-runtime/artifacts/test-results.xml | head -1)
+            TESTS=$(grep -oP 'tests="\K[0-9]+' deepagents-runtime/artifacts/test-results.xml | head -1)
+            FAILURES=$(grep -oP 'failures="\K[0-9]+' deepagents-runtime/artifacts/test-results.xml | head -1)
+            ERRORS=$(grep -oP 'errors="\K[0-9]+' deepagents-runtime/artifacts/test-results.xml | head -1)
             
             echo "tests=${TESTS:-0}" >> $GITHUB_OUTPUT
             echo "failures=${FAILURES:-0}" >> $GITHUB_OUTPUT

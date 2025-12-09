@@ -295,17 +295,19 @@ log_info "Adding NATS Helm repository..."
 helm repo add nats https://nats-io.github.io/k8s/helm/charts/ 2>/dev/null || true
 helm repo update nats
 
-# Install NATS with JetStream enabled
+# Install NATS with JetStream enabled (matching platform config)
 if ! helm_install_idempotent \
     "nats" \
     "nats/nats" \
     "$NATS_NAMESPACE" \
     "--version" "$NATS_VERSION" \
-    "--set" "nats.jetstream.enabled=true" \
-    "--set" "nats.jetstream.memStorage.enabled=true" \
-    "--set" "nats.jetstream.memStorage.size=1Gi" \
-    "--set" "nats.jetstream.fileStorage.enabled=true" \
-    "--set" "nats.jetstream.fileStorage.size=2Gi" \
+    "--set" "config.jetstream.enabled=true" \
+    "--set" "config.jetstream.fileStore.enabled=true" \
+    "--set" "config.jetstream.fileStore.pvc.enabled=true" \
+    "--set" "config.jetstream.fileStore.pvc.size=10Gi" \
+    "--set" "config.jetstream.memoryStore.enabled=true" \
+    "--set" "config.jetstream.memoryStore.maxSize=1Gi" \
+    "--set" "natsBox.enabled=true" \
     "--wait" \
     "--timeout" "5m"; then
     log_error "Failed to install NATS"
@@ -332,65 +334,68 @@ log_info "Step 9: Creating NATS JetStream streams..."
 # Wait a bit for NATS to fully initialize
 sleep 5
 
-# Get NATS pod name
-NATS_POD=$(kubectl get pod -n "$NATS_NAMESPACE" -l app.kubernetes.io/name=nats -o jsonpath='{.items[0].metadata.name}')
+# Get nats-box pod name (has nats CLI tools)
+NATS_BOX_POD=$(kubectl get pod -n "$NATS_NAMESPACE" -l app=nats-box -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
 
-if [[ -z "$NATS_POD" ]]; then
-    log_error "Could not find NATS pod"
-    exit 5
+if [[ -z "$NATS_BOX_POD" ]]; then
+    log_warn "Could not find nats-box pod, skipping stream creation"
+    log_warn "Streams will be created by the application on first use"
+else
+    log_info "Using nats-box pod: $NATS_BOX_POD"
+    
+    # Function to create stream idempotently
+    create_nats_stream() {
+        local stream_name="$1"
+        local subjects="$2"
+        
+        log_info "Creating NATS stream: $stream_name"
+        
+        # Check if stream already exists
+        if kubectl exec -n "$NATS_NAMESPACE" "$NATS_BOX_POD" -- \
+            nats stream info "$stream_name" >/dev/null 2>&1; then
+            log_info "NATS stream '$stream_name' already exists"
+            return 0
+        fi
+        
+        # Create stream
+        if kubectl exec -n "$NATS_NAMESPACE" "$NATS_BOX_POD" -- \
+            nats stream add "$stream_name" \
+            --subjects="$subjects" \
+            --storage=file \
+            --retention=limits \
+            --discard=old \
+            --max-msgs=-1 \
+            --max-bytes=-1 \
+            --max-age=24h \
+            --max-msg-size=-1 \
+            --dupe-window=2m \
+            --replicas=1 \
+            --no-confirm; then
+            log_info "NATS stream '$stream_name' created successfully"
+            return 0
+        else
+            log_error "Failed to create NATS stream '$stream_name'"
+            return 1
+        fi
+    }
 fi
 
-log_info "Using NATS pod: $NATS_POD"
-
-# Function to create stream idempotently
-create_nats_stream() {
-    local stream_name="$1"
-    local subjects="$2"
-    
-    log_info "Creating NATS stream: $stream_name"
-    
-    # Check if stream already exists
-    if kubectl exec -n "$NATS_NAMESPACE" "$NATS_POD" -- \
-        nats stream info "$stream_name" >/dev/null 2>&1; then
-        log_info "NATS stream '$stream_name' already exists"
-        return 0
+# Create streams if nats-box is available
+if [[ -n "$NATS_BOX_POD" ]]; then
+    # Create AGENT_EXECUTION stream
+    if ! create_nats_stream "AGENT_EXECUTION" "agent.execution.>"; then
+        log_warn "Failed to create AGENT_EXECUTION stream, will be created by application"
     fi
-    
-    # Create stream
-    if kubectl exec -n "$NATS_NAMESPACE" "$NATS_POD" -- \
-        nats stream add "$stream_name" \
-        --subjects="$subjects" \
-        --storage=file \
-        --retention=limits \
-        --discard=old \
-        --max-msgs=-1 \
-        --max-bytes=-1 \
-        --max-age=24h \
-        --max-msg-size=-1 \
-        --dupe-window=2m \
-        --replicas=1 \
-        --no-confirm; then
-        log_info "NATS stream '$stream_name' created successfully"
-        return 0
-    else
-        log_error "Failed to create NATS stream '$stream_name'"
-        return 1
+
+    # Create AGENT_RESULTS stream
+    if ! create_nats_stream "AGENT_RESULTS" "agent.results.>"; then
+        log_warn "Failed to create AGENT_RESULTS stream, will be created by application"
     fi
-}
 
-# Create AGENT_EXECUTION stream
-if ! create_nats_stream "AGENT_EXECUTION" "agent.execution.>"; then
-    log_error "Failed to create AGENT_EXECUTION stream"
-    exit 5
+    log_info "NATS streams created successfully"
+else
+    log_info "Skipping stream creation, will be handled by application"
 fi
-
-# Create AGENT_RESULTS stream
-if ! create_nats_stream "AGENT_RESULTS" "agent.results.>"; then
-    log_error "Failed to create AGENT_RESULTS stream"
-    exit 5
-fi
-
-log_info "NATS streams created successfully"
 
 # ============================================================================
 # Final Verification
