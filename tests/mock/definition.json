@@ -1,0 +1,140 @@
+{
+  "tool_definitions": [
+    {
+      "name": "generate_diff",
+      "runtime": {
+        "script": "import difflib\nfrom langchain_core.tools import tool\n\n@tool\ndef generate_diff(original: str, new: str) -> str:\n    \"\"\"Generate unified diff between original and new content.\"\"\"\n    diff_lines = difflib.unified_diff(\n        original.splitlines(keepends=True),\n        new.splitlines(keepends=True),\n        fromfile='original',\n        tofile='new',\n        lineterm=''\n    )\n    return ''.join(diff_lines)",
+        "dependencies": ["langchain-core"]
+      }
+    },
+    {
+      "name": "propose_changes",
+      "runtime": {
+        "script": "from langchain_core.tools import tool\nfrom langgraph.types import Command\nfrom langchain.tools import ToolRuntime\nfrom langchain_core.messages import ToolMessage\n\n@tool\ndef propose_changes(path: str, diff: str, action: str = \"update\", runtime: ToolRuntime = None) -> Command:\n    \"\"\"Update proposed_changes state incrementally.\"\"\"\n    tool_call_id = runtime.tool_call_id if runtime else \"unknown\"\n    return Command(\n        update={\n            \"proposed_changes\": [{\n                \"file_path\": path,\n                \"diff\": diff,\n                \"action\": action\n            }],\n            \"messages\": [ToolMessage(\n                content=f\"Proposed changes for {path} ({action})\",\n                tool_call_id=tool_call_id\n            )]\n        }\n    )",
+        "dependencies": ["langchain-core", "langgraph", "langchain"]
+      }
+    },
+    {
+      "name": "validate_definition",
+      "runtime": {
+        "script": "import json\nfrom jsonschema import validate, ValidationError\nfrom langchain_core.tools import tool\nfrom langgraph.types import Command\nfrom langchain.tools import ToolRuntime\nfrom langchain_core.messages import ToolMessage\n\nAUTHORITATIVE_SCHEMA = {\n    \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n    \"title\": \"Agentic Workflow Definition v2.0\",\n    \"type\": \"object\",\n    \"properties\": {\n        \"nodes\": {\"type\": \"array\"},\n        \"edges\": {\"type\": \"array\"}\n    },\n    \"required\": [\"nodes\", \"edges\"]\n}\n\n@tool\ndef validate_definition(workflow_definition: dict, runtime: ToolRuntime = None) -> str:\n    \"\"\"Validates a definition.json object against the master schema.\"\"\"\n    try:\n        validate(instance=workflow_definition, schema=AUTHORITATIVE_SCHEMA)\n        tool_call_id = runtime.tool_call_id if runtime else \"unknown\"\n        return Command(\n            update={\n                \"definition\": workflow_definition,\n                \"messages\": [ToolMessage(content=\"Validation successful.\", tool_call_id=tool_call_id)]\n            }\n        )\n    except ValidationError as e:\n        error_path = ' -> '.join(str(p) for p in e.path)\n        return f'Validation Error at path: {error_path} - {e.message}'",
+        "dependencies": ["jsonschema", "langchain-core", "langgraph", "langchain"]
+      }
+    },
+    {
+      "name": "finalize_compilation",
+      "runtime": {
+        "script": "from langchain_core.tools import tool\nfrom langgraph.types import Command\n\n@tool\ndef finalize_compilation(definition: dict) -> dict:\n    \"\"\"Finalizes compilation by returning a Command to update the definition state.\"\"\"\n    return Command(update={\"definition\": definition})",
+        "dependencies": ["langchain-core", "langgraph"]
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "builder_agent_orchestrator",
+      "type": "Orchestrator",
+      "config": {
+        "name": "Builder Agent Orchestrator",
+        "system_prompt": "You are the Main Orchestrator, the central Quality Assurance (QA) Authority for generating and modifying multi-agent workflow specifications. Your primary objective is to manage a sequential, multi-stage workflow, verifying the output of each specialist sub-agent against a strict quality rubric to produce a complete and technically valid final state.\n\nIMPORTANT: You MUST delegate work to your specialist subagents using the task() tool. Do NOT attempt to do their work yourself.\n\nYour Available Specialists (invoke via task tool):\n- Guardrail Agent: Assesses user prompts and produces guardrail_assessment.md\n- Impact Analysis Agent: Designs the implementation blueprint and produces impact_assessment.md\n- Workflow Spec Agent: Executes the blueprint to create workflow-level specification files\n- Agent Spec Agent: Executes the blueprint to create individual agent specification files\n- Multi-Agent Compiler Agent: Performs final validation and compilation\n\nYour Phased Workflow:\n1. Document Your Mission (use write_file for user_request.md and orchestrator_plan.md)\n2. Use task() tool to invoke Guardrail Agent: task(description='Perform a guardrail assessment on the user request', subagent_type='Guardrail Agent')\n3. Use task() tool to invoke Impact Analysis Agent: task(description='Create an implementation blueprint based on the user request and guardrail assessment', subagent_type='Impact Analysis Agent')\n4. Use task() tool to invoke Workflow Spec Agent: task(description='Execute the implementation plan for workflow specification files', subagent_type='Workflow Spec Agent')\n5. Use task() tool to invoke Agent Spec Agent: task(description='Execute the implementation plan for agent specification files', subagent_type='Agent Spec Agent')\n6. Use task() tool to invoke Multi-Agent Compiler Agent: task(description='Perform the final compilation of all specification files', subagent_type='Multi-Agent Compiler Agent')\n7. Conclude Your Mission\n\nBegin.",
+        "model": {
+          "provider": "openai",
+          "model": "gpt-4.1-mini"
+        },
+        "tools": []
+      }
+    },
+    {
+      "id": "guardrail-agent",
+      "type": "Specialist",
+      "config": {
+        "name": "Guardrail Agent",
+        "description": "Performs security and policy validation with constitutional governance authority, produces guardrail_assessment.md artifact",
+        "system_prompt": "You are a Principal AI Quality & Safety Analyst with Constitutional Governance Authority. Your sole mission is to analyze a user's request for a multi-agent workflow and produce a comprehensive guardrail_assessment.md artifact. This document serves as the foundational safety and quality review, ensuring that all downstream work is built upon a secure, feasible, and well-defined premise.\n\nYour workflow: 1) Deeply analyze the user's request, 2) Identify risks and opportunities through Security, Feasibility, and Best Practices lenses, 3) Formulate contextual guardrails, 4) Construct the assessment artifact, 5) Use write_file to save to guardrail_assessment.md.\n\nAfter saving, output: 'Guardrail assessment has been completed and saved. The security and quality analysis task is complete.'",
+        "model": {
+          "provider": "openai",
+          "model": "gpt-4.1-mini"
+        },
+        "tools": []
+      }
+    },
+    {
+      "id": "impact-analysis-agent",
+      "type": "Specialist",
+      "config": {
+        "name": "Impact Analysis Agent",
+        "description": "Designs implementation blueprint, produces impact_assessment.md artifact",
+        "system_prompt": "You are a Principal Solution Architect. Your mission is to produce a high-fidelity implementation blueprint in the form of an impact_assessment.md artifact. This blueprint must contain all necessary structural and logical details for downstream agents to successfully compile the entire workflow.\n\nYour workflow: 1) Read user_request.md and guardrail_assessment.md, 2) Use ls and read_file to understand current state, 3) Determine the impact (mental diff between current and future state), 4) Formulate a high-fidelity implementation plan with file-by-file changes, 5) Use write_file to save to impact_assessment.md.\n\nAfter saving, output: 'Impact assessment and implementation plan have been completed and saved. The architectural analysis task is complete.'",
+        "model": {
+          "provider": "openai",
+          "model": "gpt-4.1-mini"
+        },
+        "tools": []
+      }
+    },
+    {
+      "id": "workflow-spec-agent",
+      "type": "Specialist",
+      "config": {
+        "name": "Workflow Spec Agent",
+        "description": "Generates all /THE_SPEC/ directory files including constitution.md based on impact analysis guidance",
+        "system_prompt": "You are an Expert Workflow Specification Architect. Your sole mission is to author and maintain all workflow-level specification files in the /THE_SPEC/ directory. You are responsible for generating strategic, high-level documents that define the overall workflow architecture.\n\nYour workflow: 1) Read impact_assessment.md to understand which /THE_SPEC/ files to work with, 2) For EACH file in the implementation plan: read_file (if editing), create/modify content, generate_diff, propose_changes, 3) Repeat for all /THE_SPEC/ files.\n\nAfter completing all files, output: 'All workflow specifications in /THE_SPEC/ have been generated and are constitutionally compliant. The workflow specification task is complete.'",
+        "model": {
+          "provider": "openai",
+          "model": "gpt-4.1-mini"
+        },
+        "tools": [
+          "generate_diff",
+          "propose_changes"
+        ],
+        "state_schema": {
+          "proposed_changes": {
+            "type": "list",
+            "item_type": "dict",
+            "reducer": "add_messages"
+          }
+        }
+      }
+    },
+    {
+      "id": "agent-spec-agent",
+      "type": "Specialist",
+      "config": {
+        "name": "Agent Spec Agent",
+        "description": "Generates all /THE_CAST/ directory files with constitutional compliance validation for individual agents",
+        "system_prompt": "You are an Expert Agent Specification Architect. Your sole mission is to author and maintain all individual agent specification files in the /THE_CAST/ directory. You are responsible for generating detailed, production-quality agent definitions that are compatible with the MultiAgentCompilerAgent.\n\nYour workflow: 1) Read impact_assessment.md to understand which /THE_CAST/ files to work with, 2) For EACH file in the implementation plan: read_file (if editing), create/modify content, generate_diff, propose_changes, 3) Repeat for all /THE_CAST/ files.\n\nAfter completing all files, output: 'All agent specifications in /THE_CAST/ have been generated and are constitutionally compliant. The agent specification task is complete.'",
+        "model": {
+          "provider": "openai",
+          "model": "gpt-4.1-mini"
+        },
+        "tools": [
+          "generate_diff",
+          "propose_changes"
+        ],
+        "state_schema": {
+          "proposed_changes": {
+            "type": "list",
+            "item_type": "dict",
+            "reducer": "add_messages"
+          }
+        }
+      }
+    },
+    {
+      "id": "multiagent-compiler-agent",
+      "type": "Specialist",
+      "config": {
+        "name": "Multi-Agent Compiler Agent",
+        "description": "Performs final validation and compilation, produces definition.json",
+        "system_prompt": "You are a Principal Graph Architect. Your sole mission is to perform the final, holistic validation of a complete set of multi-agent specification files and then compile them into a single, schema-compliant definition.json artifact. You are the ultimate quality gate.\n\nYour workflow: 1) Use read_file and ls to ingest all specification files, 2) Perform holistic logical validation (if fails, output HALT with revision request), 3) Generate initial definition.json in memory, 4) Execute self-correction loop with validate_definition tool (max 5 attempts), 5) Use write_file or edit_file to save definition.json.\n\nAfter saving, output: 'The final definition.json artifact has been successfully generated, validated, and saved. The compilation task is complete.'",
+        "model": {
+          "provider": "openai",
+          "model": "gpt-4.1-mini"
+        },
+        "tools": [
+          "validate_definition",
+          "finalize_compilation"
+        ]
+      }
+    }
+  ]
+}

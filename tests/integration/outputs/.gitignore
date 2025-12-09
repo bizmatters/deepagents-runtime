@@ -1,0 +1,8 @@
+# Ignore all test artifacts
+*
+
+# But keep this .gitignore file
+!.gitignore
+
+# Keep README for documentation
+!README.md

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: intelligence-deepagents
+  labels:
+    name: intelligence-deepagents
+    layer: intelligence
+    category: deepagents

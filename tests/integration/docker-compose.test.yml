@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: agent-executor-test-postgres
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_pass
+      POSTGRES_DB: test_db
+    ports:
+      - "15433:5432"  # Use 15433 to avoid conflicts with other postgres instances
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      # Optional: Auto-run migrations on container startup
+      # Note: Tests also run migrations via postgres_connection fixture for validation
+      # - ../../migrations:/docker-entrypoint-initdb.d
+
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    container_name: agent-executor-test-dragonfly
+    ports:
+      - "16380:6379"  # Use 16380 to avoid conflicts, Dragonfly is Redis-compatible
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]  # Dragonfly is Redis-compatible
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - dragonfly_test_data:/data
+
+  nats:
+    image: nats:latest
+    container_name: agent-executor-test-nats
+    command: ["-js"]  # Enable JetStream
+    ports:
+      - "14222:4222"  # NATS client port
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_test_data:
+  dragonfly_test_data:

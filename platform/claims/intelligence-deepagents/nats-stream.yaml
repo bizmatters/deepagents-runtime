@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-agent-execution-stream
+  namespace: intelligence-deepagents
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"  # Create stream BEFORE deployment
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: nats-cli
+        image: natsio/nats-box:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          # Create stream
+          nats stream add AGENT_EXECUTION \
+            --server=nats://nats.nats.svc:4222 \
+            --subjects "agent.execute.*" \
+            --retention limits \
+            --max-msgs=-1 \
+            --max-age=24h \
+            --storage file \
+            --replicas 1 \
+            --discard old \
+            --defaults || true
+          
+          # Create consumer
+          nats consumer add AGENT_EXECUTION agent-executor-workers \
+            --server=nats://nats.nats.svc:4222 \
+            --pull \
+            --deliver all \
+            --max-deliver=-1 \
+            --ack explicit \
+            --replay instant \
+            --defaults || true
