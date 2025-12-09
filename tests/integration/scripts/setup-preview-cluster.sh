@@ -29,10 +29,10 @@ source "$SCRIPT_DIR/helpers.sh"
 CLUSTER_NAME="deepagnets-preview"
 KIND_CONFIG="$SCRIPT_DIR/../kind-config.yaml"
 CROSSPLANE_NAMESPACE="crossplane-system"
-CROSSPLANE_VERSION="1.14.5"
-CNPG_VERSION="1.22.0"
+CROSSPLANE_VERSION="1.16.0"  # From platform: bootstrap/components/01-crossplane.yaml
+CNPG_VERSION="0.22.1"         # From platform: bootstrap/components/01-cnpg.yaml
 NATS_NAMESPACE="nats"
-NATS_VERSION="1.1.5"
+NATS_VERSION="1.2.6"          # From platform: bootstrap/components/01-nats.yaml
 ESO_NAMESPACE="external-secrets"
 
 # Validate required environment variables

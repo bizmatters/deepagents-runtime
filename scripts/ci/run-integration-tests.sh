@@ -136,7 +136,7 @@ validate_environment() {
     log_info "Project root: ${PROJECT_ROOT}"
     log_info "Tier 3 scripts: ${TIER3_SCRIPTS_DIR}"
     log_info "Platform directory: ${ZEROTOUCH_PLATFORM_DIR}"
-    log_info "Platform branch: ${PLATFORM_BRANCH:-main}"
+    log_info "Platform branch: ${PLATFORM_BRANCH:-feature/agent-executor}"
     log_info "Artifacts directory: ${ARTIFACTS_DIR}"
     log_info "AWS credentials: configured"
     
