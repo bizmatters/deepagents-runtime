@@ -80,6 +80,10 @@ jobs:
       
       - name: Bootstrap Platform Preview Environment
         working-directory: zerotouch-platform
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PAT_GITHUB_USER: ${{ secrets.PAT_GITHUB_USER }}
+          PAT_GITHUB: ${{ secrets.PAT_GITHUB }}
         run: |
           chmod +x scripts/bootstrap/01-master-bootstrap.sh
           ./scripts/bootstrap/01-master-bootstrap.sh --mode preview
