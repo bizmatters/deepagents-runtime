@@ -183,10 +183,18 @@ while ! resource_exists "secret" "agent-executor-db-conn" "$NAMESPACE"; do
         kubectl get postgresinstance -n "$NAMESPACE" agent-executor-db -o yaml || true
         log_error "XPostgresInstance status:"
         kubectl get xpostgresinstance -A || true
+        log_error "Crossplane Object resources:"
+        kubectl get object -A || true
+        log_error "Crossplane Provider status:"
+        kubectl get provider || true
+        log_error "ProviderConfig status:"
+        kubectl get providerconfig || true
         log_error "CNPG Cluster status:"
         kubectl get cluster -A || true
         log_error "CNPG Cluster pods:"
         kubectl get pods -A -l cnpg.io/cluster || true
+        log_error "Crossplane provider-kubernetes logs:"
+        kubectl logs -n crossplane-system -l pkg.crossplane.io/provider=provider-kubernetes --tail=50 || true
         exit 3
     fi
     log_info "Waiting for PostgreSQL secret... (attempt $RETRY_COUNT/$MAX_RETRIES)"
