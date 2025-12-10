@@ -21,8 +21,9 @@ on:
       - '.github/workflows/deepagnets-integration-tests.yml'
       - 'scripts/ci/**'
       - 'tests/integration/**'
-  repository_dispatch:
-    types: [platform-updated]
+  schedule:
+    # Run daily at 2 AM UTC to test against latest platform changes
+    - cron: '0 2 * * *'
   workflow_dispatch:
     inputs:
       platform_branch:
@@ -52,7 +53,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/zerotouch-platform
-          ref: ${{ github.event.client_payload.branch || inputs.platform_branch || 'feature/agent-executor' }}
+          ref: ${{ inputs.platform_branch || 'feature/agent-executor' }}
           path: zerotouch-platform
           token: ${{ secrets.GITHUB_TOKEN }}
       
@@ -168,7 +169,7 @@ jobs:
             - Failed: ${failures}
             - Errors: ${errors}
             
-            **Platform Branch:** \`${{ github.event.client_payload.branch || inputs.platform_branch || 'feature/agent-executor' }}\`
+            **Platform Branch:** \`${{ inputs.platform_branch || 'feature/agent-executor' }}\`
             
             ${success ? '🎉 All integration tests passed!' : '⚠️ Some tests failed. Please review the artifacts for details.'}
             
