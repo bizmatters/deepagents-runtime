@@ -11,23 +11,8 @@ spec:
   nats:
     stream: AGENT_EXECUTION
     consumer: deepagents-runtime-workers
-  # Health checks for production stability
-  livenessProbe:
-    httpGet:
-      path: /health
-      port: 8080
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 3
-  readinessProbe:
-    httpGet:
-      path: /ready
-      port: 8080
-    initialDelaySeconds: 10
-    periodSeconds: 5
-    timeoutSeconds: 10
-    failureThreshold: 3
+  # Note: livenessProbe and readinessProbe are configured in the Composition,
+  # not in the claim. The XRD doesn't support these fields directly.
   # Secrets with standard environment variable names (envFrom)
   secret1Name: deepagents-runtime-db-conn      # POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_SCHEMA
   secret2Name: deepagents-runtime-cache-conn   # DRAGONFLY_HOST, DRAGONFLY_PORT, DRAGONFLY_PASSWORD
