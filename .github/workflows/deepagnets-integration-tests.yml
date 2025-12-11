@@ -90,14 +90,28 @@ jobs:
           chmod +x scripts/bootstrap/01-master-bootstrap.sh
           ./scripts/bootstrap/01-master-bootstrap.sh --mode preview
       
-      - name: Deploy Service and Run Tests
+      - name: Build Docker Image
+        working-directory: deepagents-runtime
+        run: |
+          chmod +x scripts/ci/build.sh
+          ./scripts/ci/build.sh --mode=test
+      
+      - name: Deploy Service
+        working-directory: deepagents-runtime
+        env:
+          ZEROTOUCH_PLATFORM_DIR: ${{ github.workspace }}/zerotouch-platform
+        run: |
+          chmod +x scripts/ci/deploy.sh
+          ./scripts/ci/deploy.sh
+      
+      - name: Run Integration Tests
         id: run_tests
         working-directory: deepagents-runtime
         env:
           ZEROTOUCH_PLATFORM_DIR: ${{ github.workspace }}/zerotouch-platform
         run: |
-          chmod +x scripts/ci/deploy-and-test.sh
-          ./scripts/ci/deploy-and-test.sh
+          chmod +x scripts/ci/test.sh
+          ./scripts/ci/test.sh tests/integration
       
       - name: Cleanup Preview Environment
         if: always()
@@ -126,7 +140,7 @@ jobs:
             deepagents-runtime/artifacts/pods.txt
             deepagents-runtime/artifacts/keda-scaledobjects.txt
             deepagents-runtime/artifacts/crossplane-claims.txt
-            deepagents-runtime/artifacts/agent-executor-logs.txt
+            deepagents-runtime/artifacts/deepagents-runtime-logs.txt
           retention-days: 30
       
       - name: Parse test results

@@ -1,37 +1,22 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # ==============================================================================
-# Tier 3 Local Script: Development Entrypoint
+# Tier 2 Local Script: Start Development Server
 # ==============================================================================
 # Purpose: Start agent-executor service in local development mode with hot-reload
-# Owner: Backend Developer
 # Called by: Developer via terminal
-#
-# Features:
-#   - Hot-reloading for code changes
-#   - Local environment variable setup
-#   - Optional Docker Compose for dependencies
-#   - Poetry-managed virtual environment
-#
-# Environment:
-#   - Uses .env file if present
-#   - Defaults to localhost infrastructure
-#   - NEVER called by CI
 # ==============================================================================
 
-# Navigate to service directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SERVICE_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-
-cd "${SERVICE_DIR}"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "${REPO_ROOT}"
 
 echo "================================================================================"
-echo "Starting Agent Executor Service (Local Development Mode)"
+echo "Starting Agent Executor Service (Local Development)"
 echo "================================================================================"
-echo "  Service Directory: ${SERVICE_DIR}"
 echo "  Hot-reload:        Enabled"
 echo "  Port:              8080"
+echo "  API docs:          http://localhost:8080/docs"
 echo "================================================================================"
 
 # Load environment variables from .env if present
@@ -45,17 +30,7 @@ fi
 # Set default local environment variables
 export PORT="${PORT:-8080}"
 export LOG_LEVEL="${LOG_LEVEL:-debug}"
-export VAULT_ADDR="${VAULT_ADDR:-http://localhost:8200}"
-export VAULT_TOKEN="${VAULT_TOKEN:-root}"
-
-# Optional: Start local infrastructure with Docker Compose
-# Uncomment if you have a docker-compose.yml for local dependencies
-# if [ -f "docker-compose.local.yml" ]; then
-#     echo "→ Starting local infrastructure (PostgreSQL, Redis, NATS)..."
-#     docker-compose -f docker-compose.local.yml up -d
-#     echo "→ Waiting for services to be ready..."
-#     sleep 5
-# fi
+export DISABLE_VAULT_AUTH="${DISABLE_VAULT_AUTH:-true}"
 
 echo ""
 echo "→ Starting service with hot-reload..."
@@ -64,8 +39,6 @@ echo "→ API docs available at: http://localhost:${PORT}/docs"
 echo ""
 
 # Start with Poetry in development mode
-# - Uvicorn --reload watches for file changes
-# - Uses Poetry-managed virtual environment
 poetry run uvicorn agent_executor.api.main:app \
     --reload \
     --host 0.0.0.0 \

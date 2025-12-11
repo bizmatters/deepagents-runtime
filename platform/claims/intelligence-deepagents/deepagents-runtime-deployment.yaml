@@ -1,0 +1,36 @@
+apiVersion: platform.bizmatters.io/v1alpha1
+kind: EventDrivenService
+metadata:
+  name: deepagents-runtime
+  namespace: intelligence-deepagents
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  image: ghcr.io/arun4infra/deepagents-runtime:latest
+  size: small
+  nats:
+    stream: AGENT_EXECUTION
+    consumer: deepagents-runtime-workers
+  # Health checks for production stability
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 10
+    failureThreshold: 3
+  # Secrets with standard environment variable names (envFrom)
+  secret1Name: deepagents-runtime-db-conn      # POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_SCHEMA
+  secret2Name: deepagents-runtime-cache-conn   # DRAGONFLY_HOST, DRAGONFLY_PORT, DRAGONFLY_PASSWORD
+  secret3Name: deepagents-runtime-llm-keys     # OPENAI_API_KEY, ANTHROPIC_API_KEY
+  imagePullSecrets:
+    - name: ghcr-pull-secret

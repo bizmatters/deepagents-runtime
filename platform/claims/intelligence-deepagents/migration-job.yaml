@@ -1,0 +1,76 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: deepagents-runtime-migrations
+  namespace: intelligence-deepagents
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  template:
+    metadata:
+      name: deepagents-runtime-migrations
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: migrations
+        image: ghcr.io/arun4infra/deepagents-runtime:latest
+        command: ["/bin/bash", "-c"]
+        args: 
+          - |
+            echo "Starting database migrations..."
+            cd /app
+            ./scripts/ci/run-migrations.sh
+            echo "Migrations completed successfully"
+        envFrom:
+        - secretRef:
+            name: deepagents-runtime-db-conn
+        env:
+        - name: MIGRATION_DIR
+          value: "/app/migrations"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      # Add migration lock to prevent concurrent runs
+      initContainers:
+      - name: migration-lock
+        image: postgres:16-alpine
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            echo "Acquiring migration lock..."
+            export PGPASSWORD="$POSTGRES_PASSWORD"
+            
+            # Create lock table if not exists
+            psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+              -c "CREATE TABLE IF NOT EXISTS migration_locks (
+                    id SERIAL PRIMARY KEY,
+                    locked_at TIMESTAMP DEFAULT NOW(),
+                    locked_by TEXT,
+                    job_name TEXT
+                  );"
+            
+            # Try to acquire lock (fail if already locked)
+            LOCK_COUNT=$(psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+              -t -c "SELECT COUNT(*) FROM migration_locks WHERE locked_at > NOW() - INTERVAL '1 hour';")
+            
+            if [ "$LOCK_COUNT" -gt 0 ]; then
+              echo "Migration already in progress. Exiting."
+              exit 1
+            fi
+            
+            # Acquire lock
+            psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+              -c "INSERT INTO migration_locks (locked_by, job_name) VALUES ('$HOSTNAME', 'deepagents-runtime-migrations');"
+            
+            echo "Migration lock acquired"
+        envFrom:
+        - secretRef:
+            name: deepagents-runtime-db-conn
+  backoffLimit: 3
+  activeDeadlineSeconds: 600  # 10 minutes timeout
