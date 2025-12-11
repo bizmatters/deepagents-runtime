@@ -39,12 +39,16 @@ if ! kubectl cluster-info &> /dev/null; then
 fi
 
 # Get database credentials from K8s secret
-echo -e "${YELLOW}→ Fetching database credentials from K8s...${NC}"
+echo -e "${YELLOW}→ Fetching credentials from K8s...${NC}"
 DB_USER=$(kubectl get secret -n $NAMESPACE_DEEPAGENTS deepagents-runtime-db-app -o jsonpath='{.data.username}' | base64 -d)
 DB_PASS=$(kubectl get secret -n $NAMESPACE_DEEPAGENTS deepagents-runtime-db-app -o jsonpath='{.data.password}' | base64 -d)
 DB_NAME=$(kubectl get secret -n $NAMESPACE_DEEPAGENTS deepagents-runtime-db-app -o jsonpath='{.data.dbname}' | base64 -d 2>/dev/null || echo "deepagents-runtime-db")
 
+# Get Redis/Dragonfly password
+REDIS_PASS=$(kubectl get secret -n $NAMESPACE_DEEPAGENTS deepagents-runtime-cache-conn -o jsonpath='{.data.DRAGONFLY_PASSWORD}' | base64 -d)
+
 echo -e "${GREEN}  Database: ${DB_NAME} (user: ${DB_USER})${NC}"
+echo -e "${GREEN}  Redis: password configured${NC}"
 
 # Kill any existing port-forwards on our ports
 echo -e "${YELLOW}→ Cleaning up existing port-forwards...${NC}"
@@ -114,6 +118,7 @@ export TEST_POSTGRES_PASSWORD="$DB_PASS"
 export TEST_POSTGRES_DB="$DB_NAME"
 export TEST_REDIS_HOST="localhost"
 export TEST_REDIS_PORT="16380"
+export TEST_REDIS_PASSWORD="$REDIS_PASS"
 export TEST_NATS_URL="nats://localhost:14222"
 
 # Also set standard env vars used by the app
@@ -135,12 +140,11 @@ echo -e "${GREEN}Environment ready - running tests${NC}"
 echo "================================================================================"
 echo ""
 
-# Run pytest
+# Run pytest (timeout requires pytest-timeout plugin, skip if not installed)
 python -m pytest tests/integration/test_api.py \
     -v \
     --color=yes \
     --tb=short \
-    --timeout=120 \
     "$@"
 
 EXIT_CODE=$?
