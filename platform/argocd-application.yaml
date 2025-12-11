@@ -9,7 +9,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/arun4infra/deepagents-runtime.git
-    targetRevision: main
+    targetRevision: feature/integration-tests-ci
     path: platform/claims/intelligence-deepagents
     directory:
       recurse: true
