@@ -47,37 +47,66 @@ if [ ${#MISSING_VARS[@]} -gt 0 ]; then
 fi
 
 # Set test environment variables
-export NATS_URL="nats://localhost:14222"
 export DISABLE_VAULT_AUTH="true"
 
-# Run database migrations if running integration tests
+# Run integration tests against deployed K8s services
 if [[ "${TEST_DIR}" == *"integration"* ]]; then
-    log_info "Running database migrations for integration tests..."
+    log_info "Setting up port-forwards to K8s services..."
     
-    # Set migration environment variables
+    NAMESPACE="intelligence-deepagents"
+    
+    # Get database credentials from K8s secret
+    DB_USER=$(kubectl get secret -n $NAMESPACE deepagents-runtime-db-app -o jsonpath='{.data.username}' | base64 -d)
+    DB_PASS=$(kubectl get secret -n $NAMESPACE deepagents-runtime-db-app -o jsonpath='{.data.password}' | base64 -d)
+    DB_NAME=$(kubectl get secret -n $NAMESPACE deepagents-runtime-db-app -o jsonpath='{.data.dbname}' | base64 -d 2>/dev/null || echo "deepagents-runtime-db")
+    
+    log_info "Database: ${DB_NAME} (user: ${DB_USER})"
+    
+    # Start port-forwards in background
+    kubectl port-forward -n $NAMESPACE svc/deepagents-runtime-db-rw 15433:5432 &
+    PF_PG_PID=$!
+    
+    kubectl port-forward -n $NAMESPACE svc/deepagents-runtime-cache 16380:6379 &
+    PF_REDIS_PID=$!
+    
+    kubectl port-forward -n nats svc/nats 14222:4222 &
+    PF_NATS_PID=$!
+    
+    # Cleanup function
+    cleanup_port_forwards() {
+        log_info "Cleaning up port-forwards..."
+        kill $PF_PG_PID 2>/dev/null || true
+        kill $PF_REDIS_PID 2>/dev/null || true
+        kill $PF_NATS_PID 2>/dev/null || true
+    }
+    trap cleanup_port_forwards EXIT
+    
+    # Wait for port-forwards to be ready
+    sleep 5
+    
+    # Set environment variables for tests (using TEST_ prefix for fixtures)
+    export TEST_POSTGRES_HOST="localhost"
+    export TEST_POSTGRES_PORT="15433"
+    export TEST_POSTGRES_USER="$DB_USER"
+    export TEST_POSTGRES_PASSWORD="$DB_PASS"
+    export TEST_POSTGRES_DB="$DB_NAME"
+    export TEST_REDIS_HOST="localhost"
+    export TEST_REDIS_PORT="16380"
+    export TEST_NATS_URL="nats://localhost:14222"
+    
+    # Also set standard env vars for the app
     export POSTGRES_HOST="localhost"
     export POSTGRES_PORT="15433"
-    export POSTGRES_DB="test_db"
-    export POSTGRES_USER="test_user"
-    export POSTGRES_PASSWORD="test_pass"
+    export POSTGRES_USER="$DB_USER"
+    export POSTGRES_PASSWORD="$DB_PASS"
+    export POSTGRES_DB="$DB_NAME"
     export POSTGRES_SCHEMA="public"
+    export DRAGONFLY_HOST="localhost"
+    export DRAGONFLY_PORT="16380"
+    export NATS_URL="nats://localhost:14222"
     
-    # Apply migrations directly using psql
-    for migration in "${REPO_ROOT}/migrations"/*.up.sql; do
-        if [ -f "$migration" ]; then
-            log_info "Applying migration: $(basename "$migration")"
-            PGPASSWORD="$POSTGRES_PASSWORD" psql \
-                -h "$POSTGRES_HOST" \
-                -p "$POSTGRES_PORT" \
-                -U "$POSTGRES_USER" \
-                -d "$POSTGRES_DB" \
-                -v ON_ERROR_STOP=1 \
-                -c "SET search_path TO ${POSTGRES_SCHEMA};" \
-                -f "$migration"
-        fi
-    done
-    
-    log_info "✅ Migrations completed successfully"
+    # Note: Migrations are already applied by the deployed service's checkpointer
+    log_info "✅ Port-forwards ready, using deployed service credentials"
 fi
 
 # Run tests

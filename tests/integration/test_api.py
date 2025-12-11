@@ -52,54 +52,61 @@ def postgres_connection() -> Generator[psycopg.Connection, None, None]:
     """
     Real PostgreSQL connection for integration testing with schema migrations.
 
-    This fixture connects to the PostgreSQL database running via Docker Compose
-    at localhost:15433 and executes the official migration script to create
-    all checkpoint tables.
+    This fixture connects to the PostgreSQL database and ensures checkpoint tables exist.
+    
+    Modes:
+        - Local (Docker Compose): Runs migrations and drops tables on cleanup
+        - Deployed (K8s): Uses existing tables, skips cleanup to preserve service state
 
-    Migration Script: ../../migrations/001_create_checkpointer_tables.up.sql
-
-    Tables Created:
+    Tables Required:
         - checkpoint_migrations: Migration tracking (v=9)
         - checkpoints: Main checkpoint state (thread_id, checkpoint_id, checkpoint JSONB, metadata)
         - checkpoint_blobs: Channel values (thread_id, channel, version, blob BYTEA)
         - checkpoint_writes: Pending writes (thread_id, checkpoint_id, task_id, blob BYTEA)
 
-    Benefits:
-        - Single source of truth: Tests use exact same schema as production
-        - Schema consistency: No drift between test and production schemas
-        - Validation: Verifies migration scripts work correctly
-        - Maintainability: Schema changes automatically apply to tests
-
     Yields:
         psycopg.Connection: Active PostgreSQL connection
-
-    Cleanup:
-        Drops all checkpoint tables after each test session
     """
     # Connect to PostgreSQL test database
+    # Support both local Docker Compose and deployed K8s via environment variables
     conn = psycopg.connect(
-        host="localhost",
-        port=15433,
-        user="test_user",
-        password="test_pass",
-        dbname="test_db"
+        host=os.environ.get("TEST_POSTGRES_HOST", "localhost"),
+        port=int(os.environ.get("TEST_POSTGRES_PORT", "15433")),
+        user=os.environ.get("TEST_POSTGRES_USER", "test_user"),
+        password=os.environ.get("TEST_POSTGRES_PASSWORD", "test_pass"),
+        dbname=os.environ.get("TEST_POSTGRES_DB", "test_db")
     )
 
-    # Run migration script to create checkpoint tables
-    migration_file = Path(__file__).parent.parent.parent / "migrations" / "001_create_checkpointer_tables.up.sql"
+    # Check if we're testing against deployed K8s (tables already exist from service)
+    # If TEST_POSTGRES_USER is not "test_user", we're likely testing against deployed env
+    is_deployed_env = os.environ.get("TEST_POSTGRES_USER", "test_user") != "test_user"
+    tables_created_by_fixture = False
 
     with conn.cursor() as cur:
-        # Execute the migration SQL
-        migration_sql = migration_file.read_text()
-        cur.execute(migration_sql)
-        conn.commit()
+        # Check if checkpoint tables already exist
+        cur.execute("""
+            SELECT COUNT(*) FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name IN ('checkpoint_migrations', 'checkpoints', 'checkpoint_blobs', 'checkpoint_writes')
+        """)
+        existing_table_count = cur.fetchone()[0]
 
-        # Verify migration was applied (check migration version)
-        cur.execute("SELECT v FROM checkpoint_migrations WHERE v = 9")
-        result = cur.fetchone()
-        assert result is not None, "Migration 001 (version 9) should be applied"
+        if existing_table_count == 4:
+            # Tables already exist (deployed env or previous test run)
+            print(f"Checkpoint tables already exist ({existing_table_count}/4)")
+        else:
+            # Run migration script to create checkpoint tables
+            migration_file = Path(__file__).parent.parent.parent / "migrations" / "001_create_checkpointer_tables.up.sql"
+            if migration_file.exists():
+                migration_sql = migration_file.read_text()
+                cur.execute(migration_sql)
+                conn.commit()
+                tables_created_by_fixture = True
+                print("Created checkpoint tables via migration")
+            else:
+                raise FileNotFoundError(f"Migration file not found: {migration_file}")
 
-        # Verify all 4 checkpoint tables exist in public schema
+        # Verify tables exist
         cur.execute("""
             SELECT COUNT(*) FROM information_schema.tables
             WHERE table_schema = 'public'
@@ -110,13 +117,17 @@ def postgres_connection() -> Generator[psycopg.Connection, None, None]:
 
     yield conn
 
-    # Cleanup: Drop all tables created by migration (in reverse dependency order)
-    with conn.cursor() as cur:
-        cur.execute("DROP TABLE IF EXISTS checkpoint_writes")
-        cur.execute("DROP TABLE IF EXISTS checkpoint_blobs")
-        cur.execute("DROP TABLE IF EXISTS checkpoints")
-        cur.execute("DROP TABLE IF EXISTS checkpoint_migrations")
-        conn.commit()
+    # Cleanup: Only drop tables if we created them AND not testing against deployed env
+    if tables_created_by_fixture and not is_deployed_env:
+        with conn.cursor() as cur:
+            cur.execute("DROP TABLE IF EXISTS checkpoint_writes")
+            cur.execute("DROP TABLE IF EXISTS checkpoint_blobs")
+            cur.execute("DROP TABLE IF EXISTS checkpoints")
+            cur.execute("DROP TABLE IF EXISTS checkpoint_migrations")
+            conn.commit()
+            print("Cleaned up checkpoint tables")
+    else:
+        print("Skipping table cleanup (deployed environment or tables pre-existed)")
 
     conn.close()
 
@@ -136,7 +147,12 @@ def redis_client() -> Generator[redis.Redis, None, None]:
         Flushes test database after each test
     """
     # Connect to Redis test instance
-    client = redis.Redis(host="localhost", port=16380, decode_responses=True)
+    # Support both local Docker Compose and deployed K8s via environment variables
+    client = redis.Redis(
+        host=os.environ.get("TEST_REDIS_HOST", "localhost"),
+        port=int(os.environ.get("TEST_REDIS_PORT", "16380")),
+        decode_responses=True
+    )
 
     # Verify connection
     client.ping()
@@ -165,7 +181,9 @@ async def nats_client():
     import nats
     
     # Connect to NATS test instance
-    nc = await nats.connect("nats://localhost:14222")
+    # Support both local Docker Compose and deployed K8s via environment variables
+    nats_url = os.environ.get("TEST_NATS_URL", "nats://localhost:14222")
+    nc = await nats.connect(nats_url)
     
     # Get JetStream context
     js = nc.jetstream()
