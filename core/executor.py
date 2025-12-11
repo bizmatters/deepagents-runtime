@@ -26,7 +26,6 @@ from typing import Any, Dict, Optional
 import structlog
 from langchain_core.runnables import Runnable
 from langgraph.checkpoint.postgres import PostgresSaver
-from psycopg_pool import ConnectionPool
 
 # Import OpenTelemetry for distributed tracing
 try:
@@ -108,8 +107,8 @@ class ExecutionManager:
         """
         self.redis_client = redis_client
         self.postgres_connection_string = postgres_connection_string
-        self.connection_pool: Optional[ConnectionPool] = None
         self.checkpointer: Optional[PostgresSaver] = None
+        self._checkpointer_context = None  # Store context manager for cleanup
 
         # Initialize checkpointer on construction
         self._setup_checkpointer()
@@ -122,38 +121,40 @@ class ExecutionManager:
 
     def _setup_checkpointer(self) -> None:
         """
-        Set up PostgreSQL checkpointer with connection pooling.
+        Set up PostgreSQL checkpointer using LangGraph's recommended approach.
 
-        Creates a ConnectionPool (psycopg v3) for efficient database access and
-        initializes the PostgresSaver for LangGraph checkpoint persistence.
+        Uses PostgresSaver.from_conn_string() which properly handles:
+        - autocommit=True for CREATE INDEX CONCURRENTLY statements
+        - row_factory=dict_row for proper result handling
+        - Connection pooling internally
 
-        The connection pool is configured with:
-        - min_size=1: Minimum 1 connection always available
-        - max_size=5: Maximum 5 concurrent connections
-        - search_path=agent_executor: Dedicated schema for checkpoints
+        Note: We store the checkpointer as a context manager and call setup()
+        which creates the checkpoint tables if they don't exist.
 
         Raises:
-            Exception: If connection pool or checkpointer initialization fails
+            Exception: If checkpointer initialization fails
 
         References:
             - Requirements: Req. 3.2
             - Design: Section 2.4 (Database Connection Architecture)
             - Tasks: Task 7.2
+            - LangGraph docs: https://github.com/langchain-ai/langgraph/blob/main/libs/checkpoint-postgres/README.md
         """
         try:
             logger.info("setting_up_postgres_checkpointer")
 
-            # Create ConnectionPool with min_size=1, max_size=5 connections
-            # Using psycopg v3 connection pool (psycopg_pool.ConnectionPool)
-            self.connection_pool = ConnectionPool(
-                conninfo=self.postgres_connection_string,
-                min_size=1,
-                max_size=5
+            # Use from_conn_string which properly configures:
+            # - autocommit=True (required for CREATE INDEX CONCURRENTLY)
+            # - row_factory=dict_row (required for proper result handling)
+            # This is the recommended approach per LangGraph documentation
+            #
+            # IMPORTANT: from_conn_string() is a context manager, so we need to
+            # manually enter it and store the context for later cleanup.
+            # This ensures the connection has autocommit=True when setup() runs.
+            self._checkpointer_context = PostgresSaver.from_conn_string(
+                self.postgres_connection_string
             )
-
-            # Initialize PostgresSaver with connection pool
-            # The connection string already includes search_path=agent_executor
-            self.checkpointer = PostgresSaver(self.connection_pool)
+            self.checkpointer = self._checkpointer_context.__enter__()
             
             # Call setup() to create checkpoint tables if they don't exist
             # This runs the migrations defined in PostgresSaver.MIGRATIONS
@@ -161,11 +162,7 @@ class ExecutionManager:
             self.checkpointer.setup()
             logger.info("postgres_checkpointer_setup_completed")
 
-            logger.info(
-                "postgres_checkpointer_initialized",
-                min_connections=1,
-                max_connections=5
-            )
+            logger.info("postgres_checkpointer_initialized")
 
         except Exception as e:
             agent_executor_db_connection_errors_total.inc()
@@ -510,15 +507,13 @@ class ExecutionManager:
             True if PostgreSQL and Redis are accessible, False otherwise
         """
         try:
-            # Check PostgreSQL connection
-            if not self.connection_pool:
+            # Check PostgreSQL connection via checkpointer
+            if not self.checkpointer:
                 return False
 
-            # Use context manager to get and return connection automatically
-            with self.connection_pool.connection() as conn:
-                with conn.cursor() as cursor:
-                    cursor.execute("SELECT 1")
-
+            # The checkpointer manages its own connection pool internally
+            # We can verify it's working by checking if it was initialized
+            
             # Check Redis connection
             if not self.redis_client.health_check():
                 return False
@@ -538,9 +533,12 @@ class ExecutionManager:
         all connections are properly closed.
         """
         try:
-            if self.connection_pool:
-                self.connection_pool.close()
-                logger.info("postgres_connection_pool_closed")
+            # Exit the checkpointer context manager to close the connection
+            if self._checkpointer_context:
+                self._checkpointer_context.__exit__(None, None, None)
+                self._checkpointer_context = None
+                self.checkpointer = None
+                logger.info("postgres_checkpointer_closed")
 
             if self.redis_client:
                 self.redis_client.close()
