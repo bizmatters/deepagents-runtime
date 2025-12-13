@@ -27,8 +27,8 @@ echo "==========================================================================
 log_info "Checking required XRDs..."
 required_xrds=(
     "xeventdrivenservices.platform.bizmatters.io"
-    "xpostgresqlclusters.platform.bizmatters.io"
-    "xdragonflyinstances.platform.bizmatters.io"
+    "xpostgresinstances.database.bizmatters.io"
+    "xdragonflyinstances.database.bizmatters.io"
 )
 
 for xrd in "${required_xrds[@]}"; do
@@ -44,7 +44,7 @@ done
 log_info "Checking required compositions..."
 required_compositions=(
     "event-driven-service"
-    "postgresql-cluster"
+    "postgres-instance"
     "dragonfly-instance"
 )
 
@@ -101,8 +101,8 @@ if kubectl get clusters.postgresql.cnpg.io --all-namespaces >/dev/null 2>&1; the
 fi
 
 # Check if dragonfly caches exist
-if kubectl get statefulsets --all-namespaces -l app.kubernetes.io/name=dragonfly >/dev/null 2>&1; then
-    df_count=$(kubectl get statefulsets --all-namespaces -l app.kubernetes.io/name=dragonfly --no-headers | wc -l)
+if kubectl get statefulsets --all-namespaces -l app=dragonfly >/dev/null 2>&1; then
+    df_count=$(kubectl get statefulsets --all-namespaces -l app=dragonfly --no-headers | wc -l)
     log_success "✓ Found $df_count Dragonfly caches"
 fi
 
