@@ -103,7 +103,7 @@ jobs:
           ZEROTOUCH_PLATFORM_DIR: ${{ github.workspace }}/zerotouch-platform
         run: |
           chmod +x scripts/ci/deploy.sh
-          ./scripts/ci/deploy.sh
+          ./scripts/ci/deploy.sh preview
       
       - name: Run Integration Tests
         id: run_tests
