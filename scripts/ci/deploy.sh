@@ -37,6 +37,10 @@ echo "  Namespace: ${NAMESPACE}"
 echo "  Image:     ${IMAGE_NAME}:${IMAGE_TAG}"
 echo "================================================================================"
 
+# Step 0: Validate platform dependencies
+log_info "Validating platform dependencies..."
+"${REPO_ROOT}/scripts/ci/validate-platform-dependencies.sh"
+
 # Pre-flight checks
 log_info "Running pre-flight checks..."
 echo "Checking Crossplane providers..."
