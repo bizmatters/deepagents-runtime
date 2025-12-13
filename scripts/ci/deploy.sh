@@ -103,20 +103,78 @@ else
 fi
 
 kubectl apply -f "${TEMP_CLAIM}"
+
+# Debug: Verify the claim was applied correctly
+echo "=== Verifying EventDrivenService claim ==="
+echo "Applied claim content:"
+cat "${TEMP_CLAIM}"
+echo ""
+echo "Checking if EventDrivenService was created..."
+kubectl get eventdrivenservice deepagents-runtime -n "${NAMESPACE}" -o yaml || echo "EventDrivenService not found immediately after apply"
+
 rm -f "${TEMP_CLAIM}"
 
 # Step 5: Wait for deployment to be ready
 log_info "Waiting for deployment to be ready..."
 
-# Debug: Check current state
+# Debug: Check current state before waiting
 echo "=== Debugging deployment status ==="
-kubectl get deployment -n "${NAMESPACE}" || echo "No deployments found"
-kubectl get pods -n "${NAMESPACE}" || echo "No pods found"
-kubectl get events -n "${NAMESPACE}" --sort-by='.lastTimestamp' | tail -10
+echo "Checking EventDrivenService status..."
+kubectl get eventdrivenservice -n "${NAMESPACE}" -o wide || echo "No EventDrivenService found"
 
-kubectl wait deployment/deepagents-runtime \
+echo "Checking XEventDrivenService status..."
+kubectl get xeventdrivenservice -o wide || echo "No XEventDrivenService found"
+
+echo "Checking deployments..."
+kubectl get deployment -n "${NAMESPACE}" -o wide || echo "No deployments found"
+
+echo "Checking pods..."
+kubectl get pods -n "${NAMESPACE}" -o wide || echo "No pods found"
+
+echo "Checking ReplicaSets..."
+kubectl get replicaset -n "${NAMESPACE}" -o wide || echo "No ReplicaSets found"
+
+echo "Checking recent events..."
+kubectl get events -n "${NAMESPACE}" --sort-by='.lastTimestamp' | tail -15
+
+echo "Checking Crossplane managed resources..."
+kubectl get managed -o wide | grep -E "(deepagents|intelligence)" || echo "No matching managed resources"
+
+# Wait a bit for resources to be created
+echo "Waiting 30 seconds for resources to be created..."
+sleep 30
+
+echo "=== Status after 30 seconds ==="
+kubectl get eventdrivenservice -n "${NAMESPACE}" -o wide || echo "No EventDrivenService found"
+kubectl get deployment -n "${NAMESPACE}" -o wide || echo "No deployments found"
+kubectl get pods -n "${NAMESPACE}" -o wide || echo "No pods found"
+
+# Check if deployment exists before waiting
+if kubectl get deployment/deepagents-runtime -n "${NAMESPACE}" >/dev/null 2>&1; then
+    echo "Deployment found, waiting for it to be ready..."
+    kubectl wait deployment/deepagents-runtime \
+        -n "${NAMESPACE}" \
+        --for=condition=Available \
+        --timeout=300s
+else
+    echo "ERROR: Deployment 'deepagents-runtime' not found after 30 seconds!"
+    echo "Checking EventDrivenService details..."
+    kubectl describe eventdrivenservice deepagents-runtime -n "${NAMESPACE}" || echo "EventDrivenService not found"
+    
+    echo "Checking XEventDrivenService details..."
+    kubectl get xeventdrivenservice -o yaml | grep -A 50 -B 10 deepagents || echo "No XEventDrivenService with deepagents found"
+    
+    echo "Checking Crossplane provider status..."
+    kubectl get providers || echo "No providers found"
+    
+    exit 1
+fi
+
+# Wait for pod to be ready
+kubectl wait pod \
+    -l app.kubernetes.io/name=deepagents-runtime \
     -n "${NAMESPACE}" \
-    --for=condition=Available \
+    --for=condition=Ready \
     --timeout=300s
 
 # Wait for pod to be ready
