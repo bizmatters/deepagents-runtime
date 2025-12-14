@@ -1,0 +1,124 @@
+name: Test NATS Only
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/integration-tests-ci]
+    paths:
+      - '.github/workflows/test-nats-preview.yml'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test-nats:
+    name: NATS Preview Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Clone zerotouch-platform
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/zerotouch-platform
+          ref: feature/agent-executor
+          path: zerotouch-platform
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Apply Patches
+        working-directory: zerotouch-platform
+        run: |
+          chmod +x scripts/bootstrap/patches/00-apply-all-patches.sh
+          ./scripts/bootstrap/patches/00-apply-all-patches.sh --force
+          
+          echo "=== Patched NATS file ==="
+          grep -E "storageClassName|targetRevision|repoURL" bootstrap/components/01-nats.yaml | head -5
+      
+      - name: Create Kind Cluster
+        working-directory: zerotouch-platform
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+          
+          cat > kind-config.yaml << 'KINDEOF'
+          kind: Cluster
+          apiVersion: kind.x-k8s.io/v1alpha4
+          name: nats-test
+          nodes:
+          - role: control-plane
+            extraMounts:
+            - hostPath: $(pwd)
+              containerPath: /repo
+              readOnly: true
+          KINDEOF
+          
+          kind create cluster --config kind-config.yaml
+          kubectl config use-context kind-nats-test
+          echo "✓ Kind cluster created"
+      
+      - name: Install ArgoCD
+        working-directory: zerotouch-platform
+        run: |
+          kubectl create namespace argocd
+          kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/v3.2.0/manifests/install.yaml
+          
+          echo "Waiting for ArgoCD..."
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s
+          
+          kubectl apply -f bootstrap/argocd-admin-patch.yaml
+          echo "✓ ArgoCD ready"
+      
+      - name: Deploy NATS
+        working-directory: zerotouch-platform
+        run: |
+          echo "=== Applying NATS application ==="
+          kubectl apply -f bootstrap/components/01-nats.yaml
+          
+          sleep 5
+          echo "✓ NATS application created"
+      
+      - name: Debug NATS
+        working-directory: zerotouch-platform
+        run: |
+          echo "=== NATS Application Spec ==="
+          kubectl get application nats -n argocd -o yaml
+          
+          echo ""
+          echo "=== NATS File in Container ==="
+          docker exec kind-nats-test-control-plane cat /repo/bootstrap/components/01-nats.yaml | head -30
+          
+          echo ""
+          echo "=== ArgoCD Repo Server Logs ==="
+          kubectl logs -n argocd -l app.kubernetes.io/name=argocd-repo-server --tail=30
+      
+      - name: Wait for NATS
+        working-directory: zerotouch-platform
+        run: |
+          for i in {1..36}; do
+            STATUS=$(kubectl get application nats -n argocd -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
+            SYNC=$(kubectl get application nats -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Unknown")
+            
+            echo "[$i/36] NATS: $STATUS / $SYNC"
+            
+            if [ "$STATUS" = "Healthy" ] && [ "$SYNC" = "Synced" ]; then
+              echo "✓ SUCCESS!"
+              kubectl get all,pvc -n nats
+              exit 0
+            fi
+            
+            ERROR=$(kubectl get application nats -n argocd -o jsonpath='{.status.conditions[?(@.type=="ComparisonError")].message}' 2>/dev/null || echo "")
+            [ -n "$ERROR" ] && echo "  Error: $ERROR"
+            
+            sleep 5
+          done
+          
+          echo "✗ FAILED"
+          kubectl describe application nats -n argocd
+          kubectl get all,pvc,events -n nats 2>/dev/null || echo "No nats namespace"
+          exit 1
+      
+      - name: Cleanup
+        if: always()
+        run: kind delete cluster --name nats-test || true
