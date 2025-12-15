@@ -49,15 +49,14 @@ dev = [
 ]
 
 [project.scripts]
-agent-executor = "agent_executor.api.main:main"
+agent-executor = "api.main:main"
 
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-package-dir = {"agent_executor" = "."}
-packages = ["agent_executor", "agent_executor.api", "agent_executor.core", "agent_executor.models", "agent_executor.observability", "agent_executor.services"]
+packages = ["api", "core", "models", "observability", "services"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -69,7 +68,7 @@ asyncio_default_fixture_loop_scope = "function"
 addopts = [
     "-v",
     "--strict-markers",
-    "--cov=agent_executor",
+    "--cov=.",
     "--cov-report=term-missing",
     "--cov-report=html",
     "--timeout=300"

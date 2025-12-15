@@ -29,13 +29,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get purge -y --auto-remove gcc libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy application code
-COPY api/ ./agent_executor/api/
-COPY core/ ./agent_executor/core/
-COPY services/ ./agent_executor/services/
-COPY models/ ./agent_executor/models/
-COPY observability/ ./agent_executor/observability/
-COPY __init__.py ./agent_executor/__init__.py
+# Copy application code (root is agent_executor package per pyproject.toml)
+COPY api/ ./api/
+COPY core/ ./core/
+COPY services/ ./services/
+COPY models/ ./models/
+COPY observability/ ./observability/
+COPY __init__.py ./__init__.py
 
 # Copy migrations directory (required by init container)
 COPY migrations/ ./migrations/

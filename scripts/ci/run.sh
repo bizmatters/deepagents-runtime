@@ -54,9 +54,9 @@ fi
 
 # Start the service using uvicorn
 # - Poetry is NOT used in production (dependencies pre-installed)
-# - Application code mounted at /app/agent_executor/
-# - Uvicorn runs the FastAPI app from agent_executor.api.main:app
-exec uvicorn agent_executor.api.main:app \
+# - Application code at /app/ (root is agent_executor package per pyproject.toml)
+# - Uvicorn runs the FastAPI app from api.main:app
+exec uvicorn api.main:app \
     --host 0.0.0.0 \
     --port "${PORT}" \
     --log-level "${LOG_LEVEL}" \
