@@ -35,7 +35,8 @@ REQUIRED_VARS=("OPENAI_API_KEY" "ANTHROPIC_API_KEY")
 MISSING_VARS=()
 
 for var in "${REQUIRED_VARS[@]}"; do
-    if [ -z "${!var}" ]; then
+    # Use :- to provide empty default, preventing unbound variable error
+    if [ -z "${!var:-}" ]; then
         MISSING_VARS+=("$var")
     fi
 done

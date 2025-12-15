@@ -102,12 +102,12 @@ jobs:
           chmod +x scripts/patches/00-apply-all-patches.sh
           ./scripts/patches/00-apply-all-patches.sh --force
       
-      - name: Cluster Diagnostics
+      - name: Pre-Deploy Diagnostics
         if: always()
         working-directory: deepagents-runtime
         run: |
-          chmod +x scripts/ci/cluster-diagnostics.sh
-          ./scripts/ci/cluster-diagnostics.sh
+          chmod +x scripts/ci/pre-deploy-diagnostics.sh
+          ./scripts/ci/pre-deploy-diagnostics.sh
       
       - name: Deploy Service
         working-directory: deepagents-runtime
@@ -116,6 +116,13 @@ jobs:
         run: |
           chmod +x scripts/ci/deploy.sh
           ./scripts/ci/deploy.sh preview
+      
+      - name: Post-Deploy Diagnostics
+        if: always()
+        working-directory: deepagents-runtime
+        run: |
+          chmod +x scripts/ci/post-deploy-diagnostics.sh
+          ./scripts/ci/post-deploy-diagnostics.sh intelligence-deepagents deepagents-runtime
       
       - name: Run Integration Tests
         id: run_tests

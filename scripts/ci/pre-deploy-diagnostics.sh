@@ -1,6 +1,6 @@
 #!/bin/bash
-# Cluster Diagnostics - Show cluster resource usage and health
-# Usage: ./cluster-diagnostics.sh
+# Pre-Deploy Diagnostics - Show cluster resource usage and health before deployment
+# Usage: ./pre-deploy-diagnostics.sh
 
 set -euo pipefail
 
