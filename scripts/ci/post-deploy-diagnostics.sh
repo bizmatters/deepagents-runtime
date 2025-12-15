@@ -196,12 +196,17 @@ fi
 # ==============================================================================
 log_info "Checking NATS stream and consumer..."
 
+# Debug: Show all pods in nats namespace first
+log_info "DEBUG: Listing all pods in nats namespace..."
+kubectl get pods -n nats -o wide 2>&1 || echo "  Failed to list pods"
+
 # Try to get stream info using nats-box if available
-# Disable exit on error for pod check
+# Disable exit on error for entire NATS section
 set +e
 NATS_BOX_CHECK=$(kubectl get pod -n nats -l app=nats-box --no-headers 2>&1)
 NATS_BOX_EXIT=$?
-set -e
+log_info "DEBUG: nats-box check exit code: ${NATS_BOX_EXIT}"
+log_info "DEBUG: nats-box check output: ${NATS_BOX_CHECK}"
 
 if [ $NATS_BOX_EXIT -eq 0 ] && echo "$NATS_BOX_CHECK" | grep -q Running; then
     NATS_BOX_POD=$(kubectl get pod -n nats -l app=nats-box -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
@@ -210,11 +215,10 @@ if [ $NATS_BOX_EXIT -eq 0 ] && echo "$NATS_BOX_CHECK" | grep -q Running; then
     else
         log_info "Using nats-box pod: ${NATS_BOX_POD}"
         
-        # Check if stream exists (disable exit on error temporarily)
-        set +e
+        # Check if stream exists
         STREAM_CHECK=$(kubectl exec -n nats "${NATS_BOX_POD}" -- nats stream info AGENT_EXECUTION --server=nats://nats.nats.svc:4222 2>&1)
         STREAM_EXIT_CODE=$?
-        set -e
+        log_info "DEBUG: Stream check exit code: ${STREAM_EXIT_CODE}"
         
         if [ $STREAM_EXIT_CODE -eq 0 ]; then
             check_passed "NATS stream 'AGENT_EXECUTION' exists"
@@ -227,11 +231,10 @@ if [ $NATS_BOX_EXIT -eq 0 ] && echo "$NATS_BOX_CHECK" | grep -q Running; then
             echo "  Error output: ${STREAM_CHECK}"
         fi
         
-        # Check if consumer exists (disable exit on error temporarily)
-        set +e
+        # Check if consumer exists
         CONSUMER_CHECK=$(kubectl exec -n nats "${NATS_BOX_POD}" -- nats consumer info AGENT_EXECUTION "${SERVICE_NAME}-workers" --server=nats://nats.nats.svc:4222 2>&1)
         CONSUMER_EXIT_CODE=$?
-        set -e
+        log_info "DEBUG: Consumer check exit code: ${CONSUMER_EXIT_CODE}"
         
         if [ $CONSUMER_EXIT_CODE -eq 0 ]; then
             check_passed "NATS consumer '${SERVICE_NAME}-workers' exists"
@@ -241,11 +244,10 @@ if [ $NATS_BOX_EXIT -eq 0 ] && echo "$NATS_BOX_CHECK" | grep -q Running; then
         fi
     fi
 else
-    check_warning "nats-box not available, skipping stream validation"
-    log_info "Debugging: NATS box check output: ${NATS_BOX_CHECK}"
-    log_info "Listing all pods in nats namespace:"
-    kubectl get pods -n nats --show-labels 2>/dev/null || echo "  Could not list pods"
+    check_warning "nats-box not available or not running, skipping stream validation"
 fi
+# Re-enable exit on error after NATS section
+set -e
 
 # ==============================================================================
 # 7. Check Secrets
