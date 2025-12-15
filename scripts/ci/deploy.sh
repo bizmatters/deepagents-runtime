@@ -82,15 +82,50 @@ log_info "Waiting for database connection secrets..."
 # Step 3.5: Verify image is available in Kind cluster (for test mode)
 if [ "$MODE" = "preview" ] || [ "$MODE" = "auto" ]; then
     log_info "Verifying image ${IMAGE_NAME}:${IMAGE_TAG} is available in Kind cluster..."
-    if docker exec kind-control-plane crictl images | grep -q "${IMAGE_NAME}.*${IMAGE_TAG}"; then
+    
+    # Use the same cluster name as build.sh
+    KIND_CLUSTER_NAME="zerotouch-preview"
+    KIND_NODE="${KIND_CLUSTER_NAME}-control-plane"
+    
+    # Verify the cluster exists
+    if ! kind get clusters 2>/dev/null | grep -q "^${KIND_CLUSTER_NAME}$"; then
+        log_error "Kind cluster '${KIND_CLUSTER_NAME}' not found!"
+        echo "Available Kind clusters:"
+        kind get clusters 2>/dev/null || echo "No Kind clusters found"
+        exit 1
+    fi
+    
+    log_info "Using Kind cluster: ${KIND_CLUSTER_NAME}"
+    
+    # Check if the node container exists
+    if ! docker ps --format '{{.Names}}' | grep -q "^${KIND_NODE}$"; then
+        log_error "Kind node container '${KIND_NODE}' not found!"
+        echo "Available Docker containers:"
+        docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+        exit 1
+    fi
+    
+    # Check if image exists in Kind cluster
+    if docker exec "${KIND_NODE}" crictl images 2>/dev/null | grep -q "${IMAGE_NAME}.*${IMAGE_TAG}"; then
         log_success "Image found in Kind cluster"
-        docker exec kind-control-plane crictl images | grep "${IMAGE_NAME}"
+        echo "Image details:"
+        docker exec "${KIND_NODE}" crictl images | grep "${IMAGE_NAME}" || true
     else
         log_error "Image ${IMAGE_NAME}:${IMAGE_TAG} NOT found in Kind cluster!"
-        echo "Available images in Kind:"
-        docker exec kind-control-plane crictl images | grep -E "deepagents|REPOSITORY"
         echo ""
-        log_error "Did you run './scripts/ci/build.sh --mode=test' first?"
+        echo "Available images in Kind (showing deepagents and recent images):"
+        docker exec "${KIND_NODE}" crictl images 2>/dev/null | grep -E "deepagents|REPOSITORY" | head -20 || echo "Could not list images"
+        echo ""
+        echo "All images in Kind:"
+        docker exec "${KIND_NODE}" crictl images 2>/dev/null | head -30 || echo "Could not list images"
+        echo ""
+        log_error "The image was not loaded into Kind cluster!"
+        log_error "This usually means the build step failed or didn't run."
+        log_error "Expected: './scripts/ci/build.sh --mode=test' should have loaded the image."
+        echo ""
+        echo "To fix this, ensure the build step:"
+        echo "  1. Builds the Docker image: docker build -t ${IMAGE_NAME}:${IMAGE_TAG}"
+        echo "  2. Loads it into Kind: kind load docker-image ${IMAGE_NAME}:${IMAGE_TAG} --name ${KIND_CLUSTER_NAME}"
         exit 1
     fi
 fi
