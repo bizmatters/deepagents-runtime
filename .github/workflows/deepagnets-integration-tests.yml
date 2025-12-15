@@ -40,7 +40,7 @@ permissions:
 jobs:
   integration-tests:
     name: Run Integration Tests
-    runs-on: ubuntu-latest-4-cores  # 4 CPU, 16GB RAM for platform setup
+    runs-on: ubuntu-latest  # 4 CPU, 16GB RAM for platform setup
     timeout-minutes: 45
     
     steps:
