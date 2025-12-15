@@ -29,7 +29,7 @@ spec:
             --defaults || true
           
           # Create consumer
-          nats consumer add AGENT_EXECUTION agent-executor-workers \
+          nats consumer add AGENT_EXECUTION deepagents-runtime-workers \
             --server=nats://nats.nats.svc:4222 \
             --pull \
             --deliver all \

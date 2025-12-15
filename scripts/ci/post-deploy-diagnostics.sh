@@ -199,23 +199,36 @@ log_info "Checking NATS stream and consumer..."
 # Try to get stream info using nats-box if available
 if kubectl get pod -n nats -l app=nats-box --no-headers 2>/dev/null | grep -q Running; then
     NATS_BOX_POD=$(kubectl get pod -n nats -l app=nats-box -o jsonpath='{.items[0].metadata.name}')
+    log_info "Using nats-box pod: ${NATS_BOX_POD}"
     
-    # Check if stream exists
-    if kubectl exec -n nats "${NATS_BOX_POD}" -- nats stream info AGENT_EXECUTION --server=nats://nats.nats.svc:4222 >/dev/null 2>&1; then
+    # Check if stream exists (disable exit on error temporarily)
+    set +e
+    STREAM_CHECK=$(kubectl exec -n nats "${NATS_BOX_POD}" -- nats stream info AGENT_EXECUTION --server=nats://nats.nats.svc:4222 2>&1)
+    STREAM_EXIT_CODE=$?
+    set -e
+    
+    if [ $STREAM_EXIT_CODE -eq 0 ]; then
         check_passed "NATS stream 'AGENT_EXECUTION' exists"
         
         # Get stream details
-        STREAM_MSGS=$(kubectl exec -n nats "${NATS_BOX_POD}" -- nats stream info AGENT_EXECUTION --server=nats://nats.nats.svc:4222 -j 2>/dev/null | grep -o '"messages":[0-9]*' | cut -d: -f2 || echo "0")
+        STREAM_MSGS=$(echo "$STREAM_CHECK" | grep -o '"messages":[0-9]*' | cut -d: -f2 || echo "0")
         check_passed "Stream has ${STREAM_MSGS} message(s)"
     else
         check_failed "NATS stream 'AGENT_EXECUTION' not found"
+        echo "  Error output: ${STREAM_CHECK}"
     fi
     
-    # Check if consumer exists
-    if kubectl exec -n nats "${NATS_BOX_POD}" -- nats consumer info AGENT_EXECUTION "${SERVICE_NAME}-workers" --server=nats://nats.nats.svc:4222 >/dev/null 2>&1; then
+    # Check if consumer exists (disable exit on error temporarily)
+    set +e
+    CONSUMER_CHECK=$(kubectl exec -n nats "${NATS_BOX_POD}" -- nats consumer info AGENT_EXECUTION "${SERVICE_NAME}-workers" --server=nats://nats.nats.svc:4222 2>&1)
+    CONSUMER_EXIT_CODE=$?
+    set -e
+    
+    if [ $CONSUMER_EXIT_CODE -eq 0 ]; then
         check_passed "NATS consumer '${SERVICE_NAME}-workers' exists"
     else
         check_failed "NATS consumer '${SERVICE_NAME}-workers' not found"
+        echo "  Error output: ${CONSUMER_CHECK}"
     fi
 else
     check_warning "nats-box not available, skipping stream validation"
