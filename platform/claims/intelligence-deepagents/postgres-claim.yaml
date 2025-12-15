@@ -6,7 +6,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
-  size: small  # micro for preview/dev, medium for production
+  size: medium  # small/micro for preview/dev, medium for production
   version: "16"
   storageGB: 20
 # Zero-Touch Pattern:

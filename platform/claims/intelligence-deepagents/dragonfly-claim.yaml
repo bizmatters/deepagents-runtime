@@ -6,7 +6,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"  # Create cache BEFORE NATS stream
 spec:
-  size: micro  # micro for preview/dev, medium for production
+  size: medium  # small/micro for preview/dev, medium for production
   storageGB: 10
 # Zero-Touch Pattern:
 # - Crossplane auto-generates password
