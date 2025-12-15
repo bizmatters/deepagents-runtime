@@ -200,17 +200,21 @@ log_info "Checking NATS stream and consumer..."
 log_info "DEBUG: Listing all pods in nats namespace..."
 kubectl get pods -n nats -o wide 2>&1 || echo "  Failed to list pods"
 
+log_info "DEBUG: Showing labels for nats-box pod..."
+kubectl get pods -n nats --show-labels 2>&1 | grep nats-box || echo "  No nats-box pod found"
+
 # Try to get stream info using nats-box if available
 # Disable exit on error for entire NATS section
 set +e
-# Try multiple label selectors (Helm chart uses app.kubernetes.io/name)
-NATS_BOX_CHECK=$(kubectl get pod -n nats -l app.kubernetes.io/name=nats-box --no-headers 2>&1)
+# Try to find nats-box pod by name pattern (don't redirect stderr)
+NATS_BOX_CHECK=$(kubectl get pod -n nats --no-headers 2>/dev/null | grep nats-box || echo "")
 NATS_BOX_EXIT=$?
 log_info "DEBUG: nats-box check exit code: ${NATS_BOX_EXIT}"
 log_info "DEBUG: nats-box check output: ${NATS_BOX_CHECK}"
 
 if [ $NATS_BOX_EXIT -eq 0 ] && echo "$NATS_BOX_CHECK" | grep -q Running; then
-    NATS_BOX_POD=$(kubectl get pod -n nats -l app.kubernetes.io/name=nats-box -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    # Extract pod name from the output
+    NATS_BOX_POD=$(echo "$NATS_BOX_CHECK" | awk '{print $1}')
     if [ -z "$NATS_BOX_POD" ]; then
         check_warning "nats-box pod not found, skipping stream validation"
     else
