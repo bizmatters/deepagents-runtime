@@ -197,9 +197,18 @@ fi
 log_info "Checking NATS stream and consumer..."
 
 # Try to get stream info using nats-box if available
-if kubectl get pod -n nats -l app=nats-box --no-headers 2>/dev/null | grep -q Running; then
-    NATS_BOX_POD=$(kubectl get pod -n nats -l app=nats-box -o jsonpath='{.items[0].metadata.name}')
-    log_info "Using nats-box pod: ${NATS_BOX_POD}"
+# Disable exit on error for pod check
+set +e
+NATS_BOX_CHECK=$(kubectl get pod -n nats -l app=nats-box --no-headers 2>&1)
+NATS_BOX_EXIT=$?
+set -e
+
+if [ $NATS_BOX_EXIT -eq 0 ] && echo "$NATS_BOX_CHECK" | grep -q Running; then
+    NATS_BOX_POD=$(kubectl get pod -n nats -l app=nats-box -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    if [ -z "$NATS_BOX_POD" ]; then
+        check_warning "nats-box pod not found, skipping stream validation"
+    else
+        log_info "Using nats-box pod: ${NATS_BOX_POD}"
     
     # Check if stream exists (disable exit on error temporarily)
     set +e
@@ -232,6 +241,9 @@ if kubectl get pod -n nats -l app=nats-box --no-headers 2>/dev/null | grep -q Ru
     fi
 else
     check_warning "nats-box not available, skipping stream validation"
+    log_info "Debugging: NATS box check output: ${NATS_BOX_CHECK}"
+    log_info "Listing all pods in nats namespace:"
+    kubectl get pods -n nats --show-labels 2>/dev/null || echo "  Could not list pods"
 fi
 
 # ==============================================================================
