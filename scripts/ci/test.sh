@@ -118,7 +118,7 @@ python -m pytest "${TEST_DIR}" \
     --tb=short \
     --timeout=300 \
     --junit-xml="${ARTIFACTS_DIR}/test-results.xml" \
-    --cov=deepagents_runtime \
+    --cov=. \
     --cov-report=xml:"${ARTIFACTS_DIR}/coverage.xml" \
     --cov-report=html:"${ARTIFACTS_DIR}/htmlcov"
 

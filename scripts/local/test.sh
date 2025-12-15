@@ -83,7 +83,7 @@ if [ -n "${TEST_DIR}" ]; then
         -v \
         --color=yes \
         --tb=short \
-        --cov=deepagents_runtime \
+        --cov=. \
         --cov-report=term-missing \
         --cov-report=html
     
@@ -120,7 +120,7 @@ else
             -v \
             --color=yes \
             --tb=short \
-            --cov=deepagents_runtime \
+            --cov=. \
             --cov-report=term-missing \
             --cov-report=html \
             || UNIT_EXIT_CODE=$?

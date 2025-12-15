@@ -1,14 +1,17 @@
 name: Quality Gate
 
 # This workflow acts as a quality gate that only succeeds when ALL other workflows pass.
-# The build-and-push workflow depends on this, ensuring production builds only happen
-# after all quality checks (tests, linting, security scans, etc.) have passed.
+# It automatically discovers and checks all workflows for the commit, excluding itself
+# and the build-and-push workflow. This means you never need to update this file when
+# adding new quality check workflows (linting, unit tests, security scans, etc.).
 
 on:
-  push:
+  # Trigger after integration tests complete
+  workflow_run:
+    workflows: ["DeepAgents Integration Tests"]
+    types: [completed]
     branches: [main]
-  pull_request:
-    branches: [main]
+  # Allow manual trigger for testing
   workflow_dispatch:
 
 permissions:
@@ -24,15 +27,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Check all workflow runs for this commit
+      - name: Get the commit SHA from triggering workflow
+        id: get-sha
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "sha=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+          else
+            echo "sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Check all workflows passed (auto-discovery)
         uses: actions/github-script@v7
+        env:
+          COMMIT_SHA: ${{ steps.get-sha.outputs.sha }}
         with:
           script: |
-            const sha = context.sha;
+            const sha = process.env.COMMIT_SHA;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             
-            console.log(`Checking workflow runs for commit: ${sha}`);
+            console.log(`🔍 Checking workflow runs for commit: ${sha}`);
             
             // Get all workflow runs for this commit
             const { data: workflowRuns } = await github.rest.actions.listWorkflowRunsForRepo({
@@ -42,29 +56,46 @@ jobs:
               per_page: 100
             });
             
-            console.log(`Found ${workflowRuns.workflow_runs.length} workflow runs for this commit`);
+            console.log(`📊 Found ${workflowRuns.workflow_runs.length} total workflow runs for this commit`);
             
             // Filter out this workflow and build-and-push workflow
+            // All other workflows are considered quality checks that must pass
             const relevantWorkflows = workflowRuns.workflow_runs.filter(run => 
               run.name !== 'Quality Gate' && 
               run.name !== 'Build and Push Production Image'
             );
             
-            console.log(`Checking ${relevantWorkflows.length} relevant workflows...`);
+            console.log(`\n🎯 Checking ${relevantWorkflows.length} quality check workflow(s):\n`);
             
-            // Check if all relevant workflows succeeded
+            if (relevantWorkflows.length === 0) {
+              core.setFailed('❌ No quality check workflows found for this commit. Expected at least integration tests.');
+              return;
+            }
+            
+            // Check each workflow
             const failedWorkflows = [];
             const pendingWorkflows = [];
+            const passedWorkflows = [];
             
             for (const run of relevantWorkflows) {
-              console.log(`- ${run.name}: ${run.status} (${run.conclusion})`);
+              const status = `${run.status} (${run.conclusion || 'in_progress'})`;
               
               if (run.status !== 'completed') {
+                console.log(`⏳ ${run.name}: ${status}`);
                 pendingWorkflows.push(run.name);
               } else if (run.conclusion !== 'success') {
+                console.log(`❌ ${run.name}: ${status}`);
                 failedWorkflows.push({ name: run.name, conclusion: run.conclusion });
+              } else {
+                console.log(`✅ ${run.name}: ${status}`);
+                passedWorkflows.push(run.name);
               }
             }
+            
+            console.log(`\n📈 Summary:`);
+            console.log(`  ✅ Passed: ${passedWorkflows.length}`);
+            console.log(`  ❌ Failed: ${failedWorkflows.length}`);
+            console.log(`  ⏳ Pending: ${pendingWorkflows.length}`);
             
             // Report results
             if (pendingWorkflows.length > 0) {
@@ -78,11 +109,19 @@ jobs:
               return;
             }
             
-            console.log('✅ All quality checks passed!');
+            console.log('\n✅ All quality checks passed!');
+            
+            // Create summary
             core.summary
               .addHeading('Quality Gate: PASSED ✅')
-              .addRaw(`All ${relevantWorkflows.length} workflow(s) completed successfully for commit ${sha.substring(0, 7)}`)
-              .write();
+              .addRaw(`All ${relevantWorkflows.length} quality check workflow(s) completed successfully for commit ${sha.substring(0, 7)}`)
+              .addHeading('Workflow Results', 3);
+            
+            for (const name of passedWorkflows) {
+              core.summary.addRaw(`\n- ✅ ${name}`);
+            }
+            
+            core.summary.write();
       
       - name: Quality gate summary
         if: success()

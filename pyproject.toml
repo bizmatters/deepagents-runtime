@@ -49,14 +49,14 @@ dev = [
 ]
 
 [project.scripts]
-agent-executor = "api.main:main"
+deepagents-runtime = "api.main:main"
 
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["api", "core", "models", "observability", "services"]
+packages = ["api", "core", "models", "observability", "services", "platform", "migrations"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
