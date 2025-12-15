@@ -1,2 +1,0 @@
-[console_scripts]
-agent-executor = deepagents_runtime.api.main:main

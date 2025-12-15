@@ -22,16 +22,16 @@ class TestGraphBuilder:
     """Test suite for GraphBuilder class."""
 
     @pytest.fixture
-    def mock_vault_client(self):
+    def mock_checkpointer(self):
         """Create a mock VaultClient for testing."""
         vault_client = Mock()
         vault_client.get_llm_api_key.return_value = {"api_key": "sk-test-key"}
         return vault_client
 
     @pytest.fixture
-    def builder(self, mock_vault_client):
+    def builder(self, mock_checkpointer):
         """Create a GraphBuilder instance for testing."""
-        return GraphBuilder(vault_client=mock_vault_client)
+        return GraphBuilder(checkpointer=None)
 
     @pytest.fixture
     def spec_definition(self):
@@ -47,10 +47,10 @@ class TestGraphBuilder:
         with open(spec_path, 'r') as f:
             return json.load(f)
 
-    def test_initialization(self, mock_vault_client):
-        """Test GraphBuilder initializes with VaultClient."""
-        builder = GraphBuilder(vault_client=mock_vault_client)
-        assert builder.vault_client == mock_vault_client
+    def test_initialization(self, mock_checkpointer):
+        """Test GraphBuilder initializes with checkpointer."""
+        builder = GraphBuilder(checkpointer=None)
+        assert builder.checkpointer is None
 
     def test_build_from_spec_definition(self, builder, spec_definition, monkeypatch):
         """

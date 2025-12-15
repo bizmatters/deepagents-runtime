@@ -34,7 +34,7 @@ class TestBuildAgentFromDefinition:
     """Test suite for build_agent_from_definition factory function."""
 
     @pytest.fixture
-    def mock_vault_client(self):
+    def mock_checkpointer(self):
         """Create a mock VaultClient for testing."""
         vault_client = Mock()
         vault_client.get_llm_api_key.return_value = {
@@ -55,7 +55,7 @@ class TestBuildAgentFromDefinition:
         mock_filesystem_middleware,
         mock_create_agent,
         mock_create_deep_agent,
-        mock_vault_client
+        mock_checkpointer
     ):
         """Test building agent with deepagents (preferred path)."""
         # Setup mocks
@@ -117,7 +117,7 @@ test_tool = test_function
         }
 
         # Build agent
-        builder = GraphBuilder(mock_vault_client)
+        builder = GraphBuilder(mock_checkpointer)
         agent = builder.build_from_definition(definition)
 
         # Verify
@@ -141,7 +141,7 @@ test_tool = test_function
         self,
         mock_subagent_create_react,
         mock_factory_create_react,
-        mock_vault_client
+        mock_checkpointer
     ):
         """Test building agent in fallback mode (no deepagents)."""
         # Setup mocks
@@ -171,14 +171,14 @@ test_tool = test_function
         }
 
         # Build agent
-        builder = GraphBuilder(mock_vault_client)
+        builder = GraphBuilder(mock_checkpointer)
         agent = builder.build_from_definition(definition)
 
         # Verify
         assert agent is not None
         assert mock_subagent_create_react.call_count >= 1
 
-    def test_build_agent_no_nodes(self, mock_vault_client):
+    def test_build_agent_no_nodes(self, mock_checkpointer):
         """Test building agent fails with no nodes."""
         definition = {
             "tool_definitions": [],
@@ -186,10 +186,10 @@ test_tool = test_function
         }
 
         with pytest.raises(GraphBuilderError, match="must contain at least one node"):
-            builder = GraphBuilder(mock_vault_client)
+            builder = GraphBuilder(mock_checkpointer)
             builder.build_from_definition(definition)
 
-    def test_build_agent_invalid_tool_script(self, mock_vault_client):
+    def test_build_agent_invalid_tool_script(self, mock_checkpointer):
         """Test building agent fails with invalid tool script."""
         definition = {
             "tool_definitions": [
@@ -210,7 +210,7 @@ test_tool = test_function
         }
 
         with pytest.raises(GraphBuilderError):
-            builder = GraphBuilder(mock_vault_client)
+            builder = GraphBuilder(mock_checkpointer)
             builder.build_from_definition(definition)
 
     @patch('deepagents_runtime.core.builder.create_react_agent')
@@ -221,7 +221,7 @@ test_tool = test_function
         self,
         mock_subagent_create_react,
         mock_factory_create_react,
-        mock_vault_client
+        mock_checkpointer
     ):
         """Test building agent with no explicit orchestrator uses first node."""
         mock_agent = Mock(spec=Runnable)
@@ -241,7 +241,7 @@ test_tool = test_function
             ]
         }
 
-        builder = GraphBuilder(mock_vault_client)
+        builder = GraphBuilder(mock_checkpointer)
         agent = builder.build_from_definition(definition)
 
         assert agent is not None
@@ -259,7 +259,7 @@ test_tool = test_function
         mock_filesystem_middleware,
         mock_create_agent,
         mock_create_deep_agent,
-        mock_vault_client
+        mock_checkpointer
     ):
         """Test building agent with multiple specialists."""
         # Setup mocks
@@ -305,7 +305,7 @@ test_tool = test_function
         }
 
         # Build agent
-        builder = GraphBuilder(mock_vault_client)
+        builder = GraphBuilder(mock_checkpointer)
         agent = builder.build_from_definition(definition)
 
         # Verify
