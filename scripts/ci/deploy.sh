@@ -217,17 +217,14 @@ else
     kubectl get providers || echo "No providers found"
     
     echo "=== Final Resource Analysis ==="
-    echo "Current node resource usage:"
-    kubectl top nodes || echo "Metrics server not available"
-    
-    echo "Memory and CPU pressure on nodes:"
-    kubectl describe nodes | grep -A 5 -B 5 -E "(MemoryPressure|DiskPressure|PIDPressure|Ready)" || echo "Could not get node conditions"
-    
-    echo "Pod resource requests vs limits in cluster:"
-    kubectl describe nodes | grep -A 20 "Allocated resources:" || echo "Could not get allocated resources"
-    
-    echo "Failed/Pending pods that might indicate resource issues:"
-    kubectl get pods --all-namespaces --field-selector=status.phase!=Running,status.phase!=Succeeded || echo "No failed/pending pods"
+    echo "=== Deployment Failure Diagnostics ==="
+    echo "Run 'Cluster Diagnostics' step output for detailed service status"
+    echo ""
+    echo "EventDrivenService status:"
+    kubectl describe eventdrivenservice deepagents-runtime -n "${NAMESPACE}" 2>/dev/null || echo "Not found"
+    echo ""
+    echo "Recent events in namespace:"
+    kubectl get events -n "${NAMESPACE}" --sort-by='.lastTimestamp' | tail -15
     
     exit 1
 fi
