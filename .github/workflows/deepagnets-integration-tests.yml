@@ -129,6 +129,8 @@ jobs:
         working-directory: deepagents-runtime
         env:
           ZEROTOUCH_PLATFORM_DIR: ${{ github.workspace }}/zerotouch-platform
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           chmod +x scripts/ci/test.sh
           ./scripts/ci/test.sh tests/integration
