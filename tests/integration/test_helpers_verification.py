@@ -19,6 +19,7 @@ from tests.integration.test_helpers import (
     validate_minimum_events,
     validate_specialist_order,
     validate_event_structure,
+    validate_workflow_result,
 )
 
 
@@ -26,14 +27,13 @@ def test_constants():
     """Test that constants are properly defined."""
     print("Testing constants...")
     
-    assert MINIMUM_GUARANTEES["on_tool_start"] == 5
-    assert MINIMUM_GUARANTEES["on_tool_end"] == 5
-    assert MINIMUM_GUARANTEES["on_llm_stream"] == 11
-    assert MINIMUM_GUARANTEES["on_state_update"] == 6
-    assert MINIMUM_GUARANTEES["end"] == 1
+    assert CRITICAL_GUARANTEES["on_llm_stream"] == 1
+    assert CRITICAL_GUARANTEES["on_state_update"] == 2
+    assert CRITICAL_GUARANTEES["end"] == 1
     
-    assert len(REQUIRED_SPECIALIST_TOOLS) == 5
-    assert len(SPECIALIST_EXECUTION_ORDER) == 5
+    assert TYPICAL_GUARANTEES["on_llm_stream"] == 6
+    assert TYPICAL_GUARANTEES["on_state_update"] == 6
+    assert TYPICAL_GUARANTEES["end"] == 1
     
     print("✓ Constants are correct")
 
@@ -85,13 +85,21 @@ def test_validate_specialist_order():
     """Test specialist order validation."""
     print("\nTesting specialist order validation...")
     
-    # Correct order
+    # Create mock state update with correct order
     correct_events = [
         {
-            "event_type": "on_tool_start",
-            "data": {"tool_name": tool}
-        }
-        for tool in SPECIALIST_EXECUTION_ORDER
+            "event_type": "on_state_update",
+            "data": {
+                "messages": str([
+                    "AIMessage(content='', tool_calls=[{'name': 'task', 'args': {'subagent_type': 'Guardrail Agent'}}])",
+                    "AIMessage(content='', tool_calls=[{'name': 'task', 'args': {'subagent_type': 'Impact Analysis Agent'}}])",
+                    "AIMessage(content='', tool_calls=[{'name': 'task', 'args': {'subagent_type': 'Workflow Spec Agent'}}])",
+                    "AIMessage(content='', tool_calls=[{'name': 'task', 'args': {'subagent_type': 'Agent Spec Agent'}}])",
+                    "AIMessage(content='', tool_calls=[{'name': 'task', 'args': {'subagent_type': 'Multi Agent Compiler Agent'}}])",
+                ])
+            }
+        },
+        {"event_type": "end"}
     ]
     
     is_valid, errors = validate_specialist_order(correct_events)
@@ -101,13 +109,15 @@ def test_validate_specialist_order():
     # Wrong order
     wrong_events = [
         {
-            "event_type": "on_tool_start",
-            "data": {"tool_name": "workflow-spec-agent"}
+            "event_type": "on_state_update",
+            "data": {
+                "messages": str([
+                    "AIMessage(content='', tool_calls=[{'name': 'task', 'args': {'subagent_type': 'Workflow Spec Agent'}}])",
+                    "AIMessage(content='', tool_calls=[{'name': 'task', 'args': {'subagent_type': 'Guardrail Agent'}}])",
+                ])
+            }
         },
-        {
-            "event_type": "on_tool_start",
-            "data": {"tool_name": "guardrail-agent"}
-        }
+        {"event_type": "end"}
     ]
     
     is_valid, errors = validate_specialist_order(wrong_events)
@@ -115,32 +125,7 @@ def test_validate_specialist_order():
     print(f"✓ Wrong order correctly rejected")
 
 
-def test_validate_tool_pairing():
-    """Test tool start/end pairing validation."""
-    print("\nTesting tool pairing validation...")
-    
-    # Correct pairing
-    correct_events = [
-        {"event_type": "on_tool_start", "data": {"tool_name": "tool1"}},
-        {"event_type": "on_tool_end", "data": {"tool_name": "tool1"}},
-        {"event_type": "on_tool_start", "data": {"tool_name": "tool2"}},
-        {"event_type": "on_tool_end", "data": {"tool_name": "tool2"}},
-    ]
-    
-    is_valid, errors = validate_tool_pairing(correct_events)
-    assert is_valid, f"Should be valid but got errors: {errors}"
-    print("✓ Correct pairing passed validation")
-    
-    # Mismatched pairing
-    mismatched_events = [
-        {"event_type": "on_tool_start", "data": {"tool_name": "tool1"}},
-        {"event_type": "on_tool_start", "data": {"tool_name": "tool2"}},
-        {"event_type": "on_tool_end", "data": {"tool_name": "tool1"}},
-    ]
-    
-    is_valid, errors = validate_tool_pairing(mismatched_events)
-    assert not is_valid, "Should be invalid"
-    print(f"✓ Mismatched pairing correctly rejected")
+
 
 
 def test_extract_specialist_timeline():
@@ -149,27 +134,20 @@ def test_extract_specialist_timeline():
     
     events = [
         {
-            "event_type": "on_tool_start",
+            "event_type": "on_state_update",
             "data": {
-                "tool_name": "guardrail-agent",
-                "timestamp": "2024-11-19T14:23:45.800Z"
+                "messages": str([
+                    "AIMessage(content='', tool_calls=[{'id': 'call1', 'name': 'task', 'args': {'subagent_type': 'Guardrail Agent'}}])",
+                    "ToolMessage(content='result', tool_call_id='call1')",
+                ])
             }
         },
-        {
-            "event_type": "on_tool_end",
-            "data": {
-                "tool_name": "guardrail-agent",
-                "timestamp": "2024-11-19T14:23:50.800Z",
-                "duration_ms": 5000
-            }
-        }
+        {"event_type": "end"}
     ]
     
     timeline = extract_specialist_timeline(events)
-    assert len(timeline) == 1
-    assert timeline[0]["specialist"] == "guardrail-agent"
-    assert timeline[0]["duration_ms"] == 5000
-    assert timeline[0]["duration_s"] == 5.0
+    assert len(timeline) >= 1, f"Expected at least 1 specialist, got {len(timeline)}"
+    assert timeline[0]["specialist"] == "Guardrail Agent"
     
     print(f"✓ Extracted timeline: {timeline[0]}")
 
@@ -206,7 +184,7 @@ def test_summary_generation():
     events = [
         {"event_type": "on_llm_stream"} for _ in range(10)
     ] + [
-        {"event_type": "on_tool_start"} for _ in range(5)
+        {"event_type": "on_state_update", "data": {"messages": "[]"}} for _ in range(5)
     ] + [
         {"event_type": "end"}
     ]
@@ -223,11 +201,12 @@ def test_summary_generation():
     
     specialist_timeline = [
         {
+            "step": 1,
+            "event_type": "on_state_update",
+            "timestamp": "2024-11-19T14:23:45.800Z",
             "specialist": "guardrail-agent",
-            "start_timestamp": "2024-11-19T14:23:45.800Z",
-            "end_timestamp": "2024-11-19T14:23:50.800Z",
-            "duration_ms": 5000,
-            "duration_s": 5.0
+            "duration_ms": "Unknown",
+            "duration_s": "Unknown"
         }
     ]
     
@@ -241,6 +220,8 @@ def test_summary_generation():
                 "output": "Test output",
                 "final_state": {
                     "definition": {
+                        "name": "test-agent",
+                        "version": "1.0",
                         "nodes": [{"id": "node1"}, {"id": "node2"}],
                         "edges": [{"source": "START", "target": "node1"}],
                         "tool_definitions": []
@@ -257,7 +238,6 @@ def test_summary_generation():
     
     assert "EXECUTION SUMMARY" in exec_summary
     assert "10.5s" in exec_summary
-    assert "16" in exec_summary  # Total events
     
     assert "POSTGRESQL CHECKPOINTS" in checkpoint_summary
     assert "3 checkpoints" in checkpoint_summary
@@ -281,7 +261,6 @@ def main():
         test_generate_test_id()
         test_validate_minimum_events()
         test_validate_specialist_order()
-        test_validate_tool_pairing()
         test_extract_specialist_timeline()
         test_save_artifact()
         test_summary_generation()

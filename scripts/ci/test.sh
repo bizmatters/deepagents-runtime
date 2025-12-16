@@ -70,7 +70,7 @@ if [[ "${TEST_DIR}" == *"integration"* ]]; then
     REDIS_PASS=$(kubectl get secret -n $NAMESPACE deepagents-runtime-cache-conn -o jsonpath='{.data.DRAGONFLY_PASSWORD}' | base64 -d)
     
     log_info "Database: ${DB_NAME} (user: ${DB_USER})"
-    log_info "Cache: Dragonfly (authenticated)"
+    log_info "Cache: Dragonfly (authenticated with password)"
     
     # Start port-forwards in background
     kubectl port-forward -n $NAMESPACE svc/deepagents-runtime-db-rw 15433:5432 &
@@ -102,6 +102,7 @@ if [[ "${TEST_DIR}" == *"integration"* ]]; then
     export TEST_POSTGRES_DB="$DB_NAME"
     export TEST_REDIS_HOST="localhost"
     export TEST_REDIS_PORT="16380"
+    export TEST_REDIS_PASSWORD="$REDIS_PASS"
     export TEST_NATS_URL="nats://localhost:14222"
     
     # Also set standard env vars for the app
@@ -114,6 +115,7 @@ if [[ "${TEST_DIR}" == *"integration"* ]]; then
     export DRAGONFLY_HOST="localhost"
     export DRAGONFLY_PORT="16380"
     export DRAGONFLY_PASSWORD="$REDIS_PASS"
+    export REDIS_PASSWORD="$REDIS_PASS"
     export NATS_URL="nats://localhost:14222"
     
     # Note: Migrations are already applied by the deployed service's checkpointer
