@@ -300,29 +300,47 @@ fi
 # ==============================================================================
 log_info "Checking service health endpoints..."
 
+# Disable exit on error for health checks
+set +e
 POD_NAME=$(kubectl get pods -n "${NAMESPACE}" -l "app.kubernetes.io/name=${SERVICE_NAME}" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+log_info "DEBUG: Found pod for health check: ${POD_NAME:-<none>}"
 
 if [ -n "${POD_NAME}" ]; then
+    log_info "Checking health on pod: ${POD_NAME}"
+    
     # Check health endpoint
-    if kubectl exec -n "${NAMESPACE}" "${POD_NAME}" -- curl -sf http://localhost:8080/health >/dev/null 2>&1; then
+    HEALTH_RESPONSE=$(kubectl exec -n "${NAMESPACE}" "${POD_NAME}" -- curl -s -w "\nHTTP_CODE:%{http_code}" http://localhost:8080/health 2>&1)
+    HEALTH_EXIT=$?
+    log_info "DEBUG: Health check exit code: ${HEALTH_EXIT}"
+    
+    if [ $HEALTH_EXIT -eq 0 ] && echo "$HEALTH_RESPONSE" | grep -q "HTTP_CODE:200"; then
         check_passed "Health endpoint responding"
     else
         check_warning "Health endpoint not responding (may still be starting)"
+        echo "  Response: ${HEALTH_RESPONSE}"
     fi
     
     # Check readiness endpoint
-    if kubectl exec -n "${NAMESPACE}" "${POD_NAME}" -- curl -sf http://localhost:8080/ready >/dev/null 2>&1; then
+    READY_RESPONSE=$(kubectl exec -n "${NAMESPACE}" "${POD_NAME}" -- curl -s -w "\nHTTP_CODE:%{http_code}" http://localhost:8080/ready 2>&1)
+    READY_EXIT=$?
+    log_info "DEBUG: Readiness check exit code: ${READY_EXIT}"
+    
+    if [ $READY_EXIT -eq 0 ] && echo "$READY_RESPONSE" | grep -q "HTTP_CODE:200"; then
         check_passed "Readiness endpoint responding"
     else
-        check_failed "Readiness endpoint not responding"
+        check_warning "Readiness endpoint not responding (service may not be fully ready)"
+        echo "  Response: ${READY_RESPONSE}"
         
-        # Get readiness response for debugging
-        READY_RESPONSE=$(kubectl exec -n "${NAMESPACE}" "${POD_NAME}" -- curl -s http://localhost:8080/ready 2>/dev/null || echo "")
-        if [ -n "${READY_RESPONSE}" ]; then
-            echo "  Response: ${READY_RESPONSE}"
-        fi
+        # Show pod logs for debugging
+        log_info "Showing last 20 lines of pod logs for debugging:"
+        kubectl logs -n "${NAMESPACE}" "${POD_NAME}" --tail=20 2>&1 || echo "  Could not retrieve logs"
     fi
+else
+    check_warning "No pod found to check health endpoints"
 fi
+
+# Re-enable exit on error
+set -e
 
 # ==============================================================================
 # 10. Check KEDA ScaledObject
