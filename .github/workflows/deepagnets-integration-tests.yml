@@ -90,8 +90,8 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          BOT_GITHUB_USERNAME: ${{ secrets.PAT_GITHUB_USER }}
-          BOT_GITHUB_TOKEN: ${{ secrets.PAT_GITHUB }}
+          BOT_GITHUB_USERNAME: ${{ secrets.BOT_GITHUB_USERNAME }}
+          BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
         run: |
           chmod +x scripts/bootstrap/01-master-bootstrap.sh
           ./scripts/bootstrap/01-master-bootstrap.sh --mode preview
