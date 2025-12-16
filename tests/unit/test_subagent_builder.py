@@ -61,7 +61,6 @@ class TestSubagentBuilder:
         assert call_args[1]["prompt"] == "You are a test specialist."
         assert len(call_args[1]["tools"]) == 1
 
-    @pytest.mark.skipif(not DEEPAGENTS_INSTALLED, reason="deepagents package not installed")
     @patch('core.subagent_builder.create_agent')
     @patch('core.subagent_builder.FilesystemMiddleware')
     @patch('core.subagent_builder.CompiledSubAgent')

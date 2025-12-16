@@ -322,7 +322,6 @@ def sample_cloudevent(sample_job_execution_event: Dict[str, Any]) -> Dict[str, A
 # ============================================================================
 
 
-@pytest.mark.xfail(reason="Full multi-agent workflow takes >10min with real LLM calls - too slow for CI", strict=False)
 @pytest.mark.asyncio
 async def test_cloudevent_processing_end_to_end_success(
     postgres_connection: psycopg.Connection,
@@ -1018,7 +1017,6 @@ async def test_cloudevent_processing_end_to_end_success(
         print(f"[LOG_CAPTURE] Logs saved to: {log_filepath}")
 
 
-@pytest.mark.skip(reason="Failure test needs to be reimplemented for NATS architecture")
 @pytest.mark.asyncio
 async def test_cloudevent_processing_end_to_end_failure(
     postgres_connection: psycopg.Connection,
@@ -1030,14 +1028,139 @@ async def test_cloudevent_processing_end_to_end_failure(
     """
     Test complete CloudEvent processing workflow with execution failure.
 
-    TODO: This test needs to be reimplemented for NATS architecture.
-    The test should:
+    This test validates the failure handling workflow:
     1. Subscribe to agent.status.failed NATS subject
     2. Mock GraphBuilder to raise an exception
     3. Send CloudEvent via HTTP
     4. Verify job.failed CloudEvent is published to NATS
+    5. Verify proper error handling and cleanup
     """
-    pass
+    import json
+    import asyncio
+    from unittest.mock import patch
+    
+    # Extract job execution event from CloudEvent
+    sample_job_execution_event = sample_cloudevent["data"]
+    
+    # Configure environment variables
+    monkeypatch.setenv("POSTGRES_HOST", os.environ.get("TEST_POSTGRES_HOST", "localhost"))
+    monkeypatch.setenv("POSTGRES_PORT", os.environ.get("TEST_POSTGRES_PORT", "15433"))
+    monkeypatch.setenv("POSTGRES_DB", os.environ.get("TEST_POSTGRES_DB", "test_db"))
+    monkeypatch.setenv("POSTGRES_USER", os.environ.get("TEST_POSTGRES_USER", "test_user"))
+    monkeypatch.setenv("POSTGRES_PASSWORD", os.environ.get("TEST_POSTGRES_PASSWORD", "test_pass"))
+    monkeypatch.setenv("POSTGRES_SCHEMA", "public")
+    
+    monkeypatch.setenv("DRAGONFLY_HOST", os.environ.get("TEST_REDIS_HOST", "localhost"))
+    monkeypatch.setenv("DRAGONFLY_PORT", os.environ.get("TEST_REDIS_PORT", "16380"))
+    if os.environ.get("TEST_REDIS_PASSWORD"):
+        monkeypatch.setenv("DRAGONFLY_PASSWORD", os.environ.get("TEST_REDIS_PASSWORD"))
+    
+    # Set NATS URL for test environment
+    test_nats_url = os.environ.get("TEST_NATS_URL", "nats://localhost:14222")
+    monkeypatch.setenv("NATS_URL", test_nats_url)
+    
+    # Get NATS connection
+    nc, js = nats_client
+    
+    # Subscribe to failure subject BEFORE execution
+    nats_failure_messages = []
+    expected_job_id = sample_job_execution_event["job_id"]
+    
+    async def failure_handler(msg):
+        """Capture failure messages, filtering for our specific job_id."""
+        data = json.loads(msg.data.decode())
+        if data.get("subject") == expected_job_id:
+            nats_failure_messages.append(data)
+        await msg.ack()
+    
+    # Create unique consumer for failure messages
+    import uuid
+    unique_consumer = f"test-failure-consumer-{uuid.uuid4().hex[:8]}"
+    
+    # Ensure agent.status.failed subject exists in stream
+    try:
+        await js.stream_info("AGENT_STATUS")
+    except Exception:
+        await js.add_stream(
+            name="AGENT_STATUS",
+            subjects=["agent.status.*"],
+            retention="limits",
+            max_age=3600,
+            storage="memory",
+        )
+    
+    failure_sub = await js.pull_subscribe("agent.status.failed", unique_consumer)
+    
+    # Mock GraphBuilder to raise an exception
+    with patch('core.builder.GraphBuilder.build_from_definition') as mock_build:
+        mock_build.side_effect = Exception("Simulated graph building failure")
+        
+        # Import app after environment and mocks are configured
+        from api.main import app
+        from fastapi.testclient import TestClient
+        
+        # Create test client and send request
+        with TestClient(app) as client:
+            headers = {
+                "ce-type": "dev.my-platform.agent.execute",
+                "ce-source": "nats://agent.execute.test",
+                "ce-id": "test-cloudevent-failure-789",
+                "ce-specversion": "1.0"
+            }
+            
+            print(f"[DEBUG] Sending failure test request for job_id: {expected_job_id}")
+            response = client.post("/", json=sample_cloudevent, headers=headers)
+            
+            # The response should still be 200 (accepted) even if processing fails
+            # The failure is reported via NATS, not HTTP response
+            assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+    
+    # Wait for failure message to be published to NATS
+    print("[DEBUG] Waiting for failure CloudEvent...")
+    max_wait = 30  # 30 seconds should be enough for failure handling
+    waited = 0
+    
+    while waited < max_wait and len(nats_failure_messages) == 0:
+        await asyncio.sleep(1)
+        waited += 1
+        
+        # Try to fetch failure messages
+        try:
+            msgs = await failure_sub.fetch(batch=5, timeout=1)
+            for msg in msgs:
+                await failure_handler(msg)
+            if nats_failure_messages:
+                print(f"[DEBUG] Received failure message after {waited}s")
+                break
+        except asyncio.TimeoutError:
+            continue
+    
+    # Validate failure CloudEvent was published
+    assert len(nats_failure_messages) > 0, \
+        f"Expected failure CloudEvent to be published to NATS agent.status.failed, got {len(nats_failure_messages)} messages"
+    
+    failure_cloudevent = nats_failure_messages[0]
+    print(f"[DEBUG] Failure CloudEvent: {json.dumps(failure_cloudevent, indent=2)}")
+    
+    # Validate CloudEvent structure
+    assert failure_cloudevent["type"] == "dev.my-platform.agent.failed", \
+        f"Expected type 'dev.my-platform.agent.failed', got '{failure_cloudevent.get('type')}'"
+    
+    assert failure_cloudevent["source"] == "agent-executor-service", \
+        f"Expected source 'agent-executor-service', got '{failure_cloudevent.get('source')}'"
+    
+    assert failure_cloudevent["subject"] == expected_job_id, \
+        f"Expected subject '{expected_job_id}', got '{failure_cloudevent.get('subject')}'"
+    
+    # Validate failure data payload
+    data = failure_cloudevent["data"]
+    assert "job_id" in data, "Failure CloudEvent data must contain job_id"
+    assert data["job_id"] == expected_job_id, f"job_id mismatch in failure data"
+    assert "error" in data, "Failure CloudEvent data must contain error information"
+    assert "Simulated graph building failure" in str(data["error"]), \
+        "Error message should contain the simulated failure text"
+    
+    print("[DEBUG] ✓ Failure test completed successfully")
 
 
 # ============================================================================
@@ -1045,7 +1168,6 @@ async def test_cloudevent_processing_end_to_end_failure(
 # ============================================================================
 
 
-@pytest.mark.xfail(reason="NATS port-forward unstable in CI - connection resets during test", strict=False)
 @pytest.mark.asyncio
 async def test_nats_consumer_processing(
     postgres_connection: psycopg.Connection,

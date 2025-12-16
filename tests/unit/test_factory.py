@@ -42,7 +42,6 @@ class TestBuildAgentFromDefinition:
         }
         return vault_client
 
-    @pytest.mark.skipif(not DEEPAGENTS_INSTALLED, reason="deepagents package not installed")
     @patch('core.builder.create_deep_agent')
     @patch('core.subagent_builder.create_agent')
     @patch('core.subagent_builder.FilesystemMiddleware')
@@ -240,7 +239,6 @@ test_tool = test_function
 
         assert agent is not None
 
-    @pytest.mark.skipif(not DEEPAGENTS_INSTALLED, reason="deepagents package not installed")
     @patch('core.builder.create_deep_agent')
     @patch('core.subagent_builder.create_agent')
     @patch('core.subagent_builder.FilesystemMiddleware')
