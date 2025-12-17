@@ -13,9 +13,13 @@ Test Strategy (ENHANCED):
     - Load REAL agent definition from tests/mock/definition.json
     - Validate actual data flow: checkpoints written, events published, CloudEvents emitted to NATS
 
-Tier 1 Critical Tests:
-    1. test_cloudevent_processing_end_to_end_success - Real data flow validation
-    2. test_cloudevent_processing_end_to_end_failure - Failure handling validation
+FILE ORGANIZATION:
+    1. INFRASTRUCTURE FIXTURES - Database connections (PostgreSQL, Redis, NATS)
+    2. DATA FIXTURES - Sample test data and CloudEvents
+    3. INTEGRATION TESTS - End-to-end workflow validation
+       - Test 1: Successful CloudEvent processing
+       - Test 2: Failed CloudEvent processing  
+       - Test 3: NATS consumer processing
 
 Prerequisites:
     - Run: docker-compose -f tests/integration/docker-compose.test.yml up -d
@@ -26,7 +30,7 @@ References:
     - Requirements: Req. 1.1, 1.2, 3.1, 5.1, 5.3
     - Design: Section 2.11 (Internal Component Architecture), Section 3.1 (API Layer)
     - Spec: .kiro/specs/agent-builder/phase1-9-deepagents_runtime_service/
-    - Tasks: Task 8.7 (Tier 1 Critical Integr
+    - Tasks: Task 8.7 (Tier 1 Critical Integration Tests)
 """
 
 import json
@@ -43,11 +47,11 @@ import redis
 from fastapi.testclient import TestClient
 
 # ============================================================================
-# REAL DATABASE FIXTURES (PostgreSQL and Redis via Docker Compose)
+# INFRASTRUCTURE FIXTURES - Real Database Connections
 # ============================================================================
 
-
-@pytest.fixture(scope="session")
+# PostgreSQL Connection Fixture
+@pytest.fixture(scope="function")
 def postgres_connection() -> Generator[psycopg.Connection, None, None]:
     """
     Real PostgreSQL connection for integration testing with schema migrations.
@@ -150,6 +154,7 @@ def postgres_connection() -> Generator[psycopg.Connection, None, None]:
     conn.close()
 
 
+# Redis Connection Fixture
 @pytest.fixture
 def redis_client() -> Generator[redis.Redis, None, None]:
     """
@@ -184,6 +189,7 @@ def redis_client() -> Generator[redis.Redis, None, None]:
     client.close()
 
 
+# NATS Connection Fixture
 @pytest.fixture
 async def nats_client():
     """
@@ -223,6 +229,20 @@ async def nats_client():
             storage="memory",  # Use memory for faster tests
         )
     
+    # Ensure AGENT_EXECUTION stream exists for publishing execution requests
+    # The NATS consumer listens to agent.execute.* subjects
+    try:
+        await js.stream_info("AGENT_EXECUTION")
+    except Exception:
+        # Stream doesn't exist, create it
+        await js.add_stream(
+            name="AGENT_EXECUTION",
+            subjects=["agent.execute.*"],
+            retention="limits",
+            max_age=3600,  # 1 hour retention for tests
+            storage="memory",  # Use memory for faster tests
+        )
+    
     yield nc, js
     
     # Cleanup: Close connection (don't delete stream - may be used by other tests)
@@ -230,17 +250,10 @@ async def nats_client():
 
 
 # ============================================================================
-# MOCK FIXTURES - REMOVED K_SINK MOCKING (Now using NATS)
-# ============================================================================
-# K_SINK mocking has been removed as CloudEventEmitter now publishes to NATS.
-# Tests will verify NATS message publishing instead.
-
-
-# ============================================================================
-# SAMPLE DATA FIXTURES
+# DATA FIXTURES - Sample Test Data and CloudEvents
 # ============================================================================
 
-
+# Agent Definition Fixture
 @pytest.fixture
 def sample_agent_definition() -> Dict[str, Any]:
     """
@@ -262,6 +275,7 @@ def sample_agent_definition() -> Dict[str, Any]:
     return load_definition_with_files(definition_path)
 
 
+# Job Execution Event Fixture
 @pytest.fixture
 def sample_job_execution_event(sample_agent_definition: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -297,6 +311,7 @@ def sample_job_execution_event(sample_agent_definition: Dict[str, Any]) -> Dict[
     }
 
 
+# CloudEvent Wrapper Fixture
 @pytest.fixture
 def sample_cloudevent(sample_job_execution_event: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -318,10 +333,10 @@ def sample_cloudevent(sample_job_execution_event: Dict[str, Any]) -> Dict[str, A
 
 
 # ============================================================================
-# TIER 1 CRITICAL INTEGRATION TESTS (ENHANCED WITH REAL DATA VALIDATION)
+# INTEGRATION TESTS - End-to-End Workflow Validation
 # ============================================================================
 
-
+# Test 1: Successful CloudEvent Processing
 @pytest.mark.asyncio
 async def test_cloudevent_processing_end_to_end_success(
     postgres_connection: psycopg.Connection,
@@ -638,6 +653,8 @@ async def test_cloudevent_processing_end_to_end_success(
             validate_specialist_order,
             validate_event_structure,
             validate_workflow_result,
+            validate_redis_artifacts,
+            extract_and_save_generated_files,
         )
         
         # Note: test_id was already generated at the start of the test
@@ -647,6 +664,15 @@ async def test_cloudevent_processing_end_to_end_success(
         # ARTIFACT COLLECTION: Save ALL events to file
         # ================================================================
         save_artifact("all_events.json", streaming_events, as_json=True)
+        
+        # ================================================================
+        # ARTIFACT COLLECTION: Extract and save generated files
+        # ================================================================
+        # This extracts all files created by write_file tool calls and saves
+        # them to a 'files/' subdirectory for easy debugging and review
+        print("\n[DEBUG] Extracting generated files from events...")
+        extracted_files = extract_and_save_generated_files(streaming_events)
+        print(f"[DEBUG] Extracted {len(extracted_files)} files")
 
         # ================================================================
         # VALIDATION 2: PostgreSQL Checkpoint Validation
@@ -704,6 +730,35 @@ async def test_cloudevent_processing_end_to_end_success(
             # https://langchain-ai.github.io/langgraph/reference/checkpoints/
             assert "v" in checkpoint_data or "channel_values" in checkpoint_data, \
                 "Req 3.3: Checkpoint must contain LangGraph state (v or channel_values)"
+
+        # ================================================================
+        # REQ 3.4: File System Artifacts Validation (CRITICAL)
+        # ================================================================
+        # Reference: Builder Agent workflow - validates that all required specification
+        # files and the final definition.json were actually generated and emitted in Redis events
+        
+        print("\n" + "="*80)
+        print("REDIS ARTIFACTS VALIDATION")
+        print("="*80)
+        
+        is_valid, artifact_errors = validate_redis_artifacts(streaming_events, sample_job_execution_event["job_id"])
+        
+        if not is_valid:
+            error_msg = "CRITICAL FAILURE: Required artifacts not found in Redis streaming events:\n\n"
+            for i, error in enumerate(artifact_errors, 1):
+                error_msg += f"{i}. {error}\n"
+            error_msg += "\nThis indicates the multi-agent workflow did not successfully generate "
+            error_msg += "the required specification files. The workflow may have completed with "
+            error_msg += "status='completed' but failed to produce the expected artifacts."
+            
+            assert False, error_msg
+        
+        print("✅ All required artifacts found and validated in Redis streaming events:")
+        print("   - /THE_SPEC/constitution.md")
+        print("   - /THE_SPEC/plan.md") 
+        print("   - /THE_SPEC/requirements.md")
+        print("   - /definition.json (✅ schema validated)")
+        print("="*80)
 
         # ================================================================
         # VALIDATION 3: Redis Streaming Events Validation
@@ -939,7 +994,7 @@ async def test_cloudevent_processing_end_to_end_success(
         print("WORKFLOW RESULT VALIDATION")
         print("="*80)
         
-        is_valid, validation_errors = validate_workflow_result(data["result"])
+        is_valid, validation_errors = validate_workflow_result(data["result"], checkpoints)
         
         if not is_valid:
             error_msg = "WORKFLOW EXECUTION FAILED:\n\n"
@@ -954,20 +1009,8 @@ async def test_cloudevent_processing_end_to_end_success(
             
             assert False, error_msg
         
-        # Extract definition details for logging
-        final_state = data["result"].get("final_state", {})
-        definition = final_state.get("definition", {})
-        nodes = definition.get("nodes", [])
-        edges = definition.get("edges", [])
-        tool_definitions = definition.get("tool_definitions", [])
-        
         print(f"✅ Workflow completed successfully (no HALT errors)")
-        print(f"✅ Valid definition.json generated:")
-        print(f"   - Name: {definition.get('name', 'N/A')}")
-        print(f"   - Version: {definition.get('version', 'N/A')}")
-        print(f"   - Nodes: {len(nodes)}")
-        print(f"   - Edges: {len(edges)}")
-        print(f"   - Tool Definitions: {len(tool_definitions)}")
+        print(f"✅ Workflow validation passed - artifacts generated and verified in checkpoint state")
         print("="*80)
 
         # ================================================================
@@ -1017,6 +1060,7 @@ async def test_cloudevent_processing_end_to_end_success(
         print(f"[LOG_CAPTURE] Logs saved to: {log_filepath}")
 
 
+# Test 2: Failed CloudEvent Processing
 @pytest.mark.asyncio
 async def test_cloudevent_processing_end_to_end_failure(
     postgres_connection: psycopg.Connection,
@@ -1164,16 +1208,17 @@ async def test_cloudevent_processing_end_to_end_failure(
 
 
 # ============================================================================
-# NATS CONSUMER INTEGRATION TEST
+# NATS CONSUMER INTEGRATION TEST - Deployed Service Validation
 # ============================================================================
 
-
+# Test 3: NATS Consumer Processing
 @pytest.mark.asyncio
 async def test_nats_consumer_processing(
     postgres_connection: psycopg.Connection,
     redis_client: redis.Redis,
     nats_client,
     sample_cloudevent: Dict[str, Any],
+    nats_consumer_service,  # This fixture starts the service automatically
     monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """
@@ -1195,6 +1240,10 @@ async def test_nats_consumer_processing(
     """
     # Extract job execution event from CloudEvent
     sample_job_execution_event = sample_cloudevent["data"]
+    
+    # Verify the service is running
+    print(f"\n[DEBUG] NATS consumer service is running (PID: {nats_consumer_service.pid})")
+    print(f"[DEBUG] Service status: {'running' if nats_consumer_service.poll() is None else 'terminated'}")
     
     # Set ALL required environment variables - use TEST_* env vars if available
     monkeypatch.setenv("DISABLE_VAULT_AUTH", "true")

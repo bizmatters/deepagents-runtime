@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import psycopg
+import jsonschema
 
 
 # ============================================================================
@@ -493,17 +494,19 @@ def extract_specialist_timeline(events: List[Dict[str, Any]]) -> List[Dict[str, 
 # WORKFLOW RESULT VALIDATION
 # ============================================================================
 
-def validate_workflow_result(result: Dict[str, Any]) -> Tuple[bool, List[str]]:
+def validate_workflow_result(result: Dict[str, Any], checkpoints: List[Dict[str, Any]]) -> Tuple[bool, List[str]]:
     """
     Validate that a workflow execution result is successful and complete.
     
     This function checks for:
     1. No HALT errors in the output
-    2. Valid definition.json was generated
-    3. Definition contains required structure (nodes, edges)
+    2. Status is completed
+    3. Output indicates successful completion
+    4. Checkpoints exist (indicating graph execution occurred)
     
     Args:
         result: The result dictionary from CloudEvent data
+        checkpoints: Required list of checkpoints from PostgreSQL database
         
     Returns:
         Tuple of (is_valid, list of error messages)
@@ -519,41 +522,165 @@ def validate_workflow_result(result: Dict[str, Any]) -> Tuple[bool, List[str]]:
     output = result.get("output", "")
     if output.startswith("HALT:"):
         errors.append(f"Workflow halted with error: {output}")
-        # If we have a HALT, the rest of the checks will likely fail, so return early
         return False, errors
     
-    # Check 3: Validate final_state exists
-    final_state = result.get("final_state", {})
-    if not final_state:
-        errors.append("No final_state found in result")
-        return False, errors
+    # Check 3: Validate output indicates success
+    if not output:
+        errors.append("No output message found in result")
+    elif "successfully" not in output.lower() and "completed" not in output.lower():
+        errors.append(f"Output does not indicate successful completion: {output[:100]}...")
     
-    # Check 4: Validate definition exists
-    definition = final_state.get("definition", {})
-    if not definition:
-        errors.append("No definition object found in final_state")
-        return False, errors
+    # Check 4: Validate workflow execution completed properly using checkpoints
+    # Checkpoints are required to validate that graph execution actually occurred
+    if len(checkpoints) == 0:
+        errors.append("No checkpoints found - graph execution may not have started")
     
-    # Check 5: Validate definition structure
-    nodes = definition.get("nodes", [])
-    if len(nodes) == 0:
-        errors.append("Definition contains no nodes")
-    
-    edges = definition.get("edges", [])
-    if len(edges) == 0:
-        errors.append("Definition contains no edges")
-    
-    # Check 6: Validate definition has required fields
-    if "name" not in definition:
-        errors.append("Definition missing 'name' field")
-    
-    if "version" not in definition:
-        errors.append("Definition missing 'version' field")
-    
-    if "tool_definitions" not in definition:
-        errors.append("Definition missing 'tool_definitions' field")
+    # Note: The actual validation of workflow success (definition.json generation, etc.)
+    # should be done by examining the Redis streaming events in the test, not here.
+    # This function only validates the basic result structure and checkpoint existence.
     
     return len(errors) == 0, errors
+
+
+def validate_redis_artifacts(events: List[Dict[str, Any]], job_id: str) -> Tuple[bool, List[str]]:
+    """
+    Validate that required file system artifacts were generated and emitted in Redis streaming events.
+    
+    This function examines the final on_state_update event (just before the end event) to verify 
+    that the multi-agent workflow successfully generated all expected specification files and 
+    the final definition.json.
+    
+    Args:
+        events: List of Redis streaming events
+        job_id: Job ID for context in error messages
+        
+    Returns:
+        Tuple of (is_valid, list of error messages)
+    """
+    errors = []
+    
+    if not events:
+        errors.append("No Redis events available for artifact validation")
+        return False, errors
+    
+    # Find the final on_state_update event (just before the end event)
+    final_state_update = None
+    for i in range(len(events) - 1, -1, -1):  # Search backwards
+        event = events[i]
+        if event.get("event_type") == "on_state_update":
+            final_state_update = event
+            break
+    
+    if not final_state_update:
+        errors.append("No final on_state_update event found in Redis stream")
+        return False, errors
+    
+    # Extract files from the final state update
+    event_data = final_state_update.get("data", {})
+    files_state = event_data.get("files", {})
+    
+    if not isinstance(files_state, dict):
+        errors.append(f"Files state is not a dictionary, got: {type(files_state)}")
+        return False, errors
+    
+    if not files_state:
+        errors.append("No files found in final state update event")
+        return False, errors
+    
+    # Define required artifacts based on the Builder Agent workflow
+    required_files = [
+        "/THE_SPEC/constitution.md",
+        "/THE_SPEC/plan.md", 
+        "/THE_SPEC/requirements.md",
+        "/definition.json"
+    ]
+    
+    # Validate each required file exists in the files state
+    missing_files = []
+    for file_path in required_files:
+        if file_path not in files_state:
+            missing_files.append(file_path)
+    
+    if missing_files:
+        errors.append(f"Missing required artifacts in Redis event files: {missing_files}")
+    
+    # Additional validation: Check that files have content
+    empty_files = []
+    for file_path in required_files:
+        if file_path in files_state:
+            file_data = files_state[file_path]
+            # File data structure: {"content": ["line1", "line2", ...], "created_at": "...", "modified_at": "..."}
+            if isinstance(file_data, dict):
+                content = file_data.get("content", [])
+                if not content or (isinstance(content, list) and len(content) == 0):
+                    empty_files.append(file_path)
+            elif not file_data:  # Handle other formats
+                empty_files.append(file_path)
+    
+    if empty_files:
+        errors.append(f"Required artifacts exist but are empty: {empty_files}")
+    
+    # ================================================================
+    # SCHEMA VALIDATION: Validate definition.json against schema
+    # ================================================================
+    if "/definition.json" in files_state and not errors:  # Only validate if file exists and no previous errors
+        try:
+            # Load the schema
+            schema_path = Path(__file__).parent.parent / "mock" / "schema.json"
+            if not schema_path.exists():
+                errors.append(f"Schema file not found: {schema_path}")
+            else:
+                with open(schema_path, 'r') as f:
+                    schema = json.load(f)
+                
+                # Extract definition.json content from Redis event
+                definition_file_data = files_state["/definition.json"]
+                
+                # Handle file data format from Redis events
+                if isinstance(definition_file_data, dict):
+                    content = definition_file_data.get("content", [])
+                    if isinstance(content, list) and content:
+                        # Join content lines if it's a list
+                        definition_content = "".join(content)
+                    else:
+                        definition_content = str(content)
+                else:
+                    definition_content = str(definition_file_data)
+                
+                # Parse JSON content
+                try:
+                    definition_json = json.loads(definition_content)
+                except json.JSONDecodeError as e:
+                    errors.append(f"definition.json contains invalid JSON: {e}")
+                    return len(errors) == 0, errors
+                
+                # Validate against schema
+                try:
+                    jsonschema.validate(instance=definition_json, schema=schema)
+                except jsonschema.ValidationError as e:
+                    errors.append(f"definition.json schema validation failed: {e.message}")
+                except jsonschema.SchemaError as e:
+                    errors.append(f"Invalid schema file: {e.message}")
+                    
+        except Exception as e:
+            errors.append(f"Unexpected error during schema validation: {e}")
+    
+    return len(errors) == 0, errors
+
+
+def validate_checkpoint_artifacts(checkpoints: List[Dict[str, Any]], job_id: str) -> Tuple[bool, List[str]]:
+    """
+    DEPRECATED: Use validate_redis_artifacts instead.
+    
+    This function is kept for backward compatibility but should not be used.
+    Artifacts are now validated from Redis streaming events, not PostgreSQL checkpoints.
+    """
+    # For backward compatibility, just check that checkpoints exist
+    if not checkpoints:
+        return False, ["No checkpoints found - workflow execution may not have started"]
+    
+    # Return success since actual validation is done via Redis events
+    return True, []
 
 
 # ============================================================================
@@ -724,3 +851,96 @@ def generate_cloudevent_summary(cloudevent: Dict[str, Any]) -> str:
     ]
     
     return "\n".join(summary_lines)
+
+
+# ============================================================================
+# FILE EXTRACTION FROM EVENTS
+# ============================================================================
+
+def extract_and_save_generated_files(events: List[Dict[str, Any]], run_dir: Path = None) -> Dict[str, str]:
+    """
+    Extract all generated files from streaming events and save them to a 'files/' subdirectory.
+    
+    This function extracts files from the final on_state_update event's 'files' field,
+    which contains all files created during the agent execution.
+    
+    Args:
+        events: List of streaming events from the agent execution
+        run_dir: Optional path to the test run directory. If not provided, uses get_test_run_dir()
+        
+    Returns:
+        Dictionary mapping file paths to their content
+    """
+    if run_dir is None:
+        run_dir = get_test_run_dir()
+    
+    # Create files subdirectory
+    files_dir = run_dir / "files"
+    files_dir.mkdir(exist_ok=True)
+    
+    extracted_files = {}
+    
+    # Find the last on_state_update event which contains the final files state
+    last_state_update = None
+    for event in reversed(events):
+        if event.get("event_type") == "on_state_update":
+            last_state_update = event
+            break
+    
+    if last_state_update:
+        data = last_state_update.get("data", {})
+        files_state = data.get("files", {})
+        
+        # Extract all files from the state
+        for file_path, file_data in files_state.items():
+            if isinstance(file_data, dict) and "content" in file_data:
+                content = file_data["content"]
+                # Content is stored as a list of lines
+                if isinstance(content, list):
+                    content = "\n".join(content)
+                extracted_files[file_path] = content
+    
+    # Save each file to the files/ subdirectory
+    for file_path, content in extracted_files.items():
+        # Convert absolute path to relative filename
+        # /THE_SPEC/plan.md -> THE_SPEC_plan.md
+        safe_filename = file_path.lstrip("/").replace("/", "_")
+        
+        # Keep the original extension if it exists
+        if not any(safe_filename.endswith(ext) for ext in [".md", ".json", ".py", ".txt", ".yaml", ".yml"]):
+            safe_filename += ".txt"
+        
+        output_path = files_dir / safe_filename
+        
+        try:
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            print(f"[FILES] Saved: {output_path.name}")
+        except Exception as e:
+            print(f"[FILES] Error saving {safe_filename}: {e}")
+    
+    # Also save a manifest of all extracted files with metadata
+    manifest = {
+        "total_files": len(extracted_files),
+        "files": []
+    }
+    
+    # Add file metadata to manifest
+    if last_state_update:
+        files_state = last_state_update.get("data", {}).get("files", {})
+        for file_path, file_data in files_state.items():
+            if isinstance(file_data, dict):
+                manifest["files"].append({
+                    "path": file_path,
+                    "created_at": file_data.get("created_at"),
+                    "modified_at": file_data.get("modified_at"),
+                    "size": len(file_data.get("content", [])) if isinstance(file_data.get("content"), list) else len(str(file_data.get("content", "")))
+                })
+    
+    manifest_path = files_dir / "_manifest.json"
+    with open(manifest_path, 'w', encoding='utf-8') as f:
+        json.dump(manifest, f, indent=2)
+    
+    print(f"[FILES] Extracted {len(extracted_files)} files to {files_dir}")
+    
+    return extracted_files

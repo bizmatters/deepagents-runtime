@@ -64,7 +64,7 @@ Your primary role is to coordinate these specialists. You must understand their 
 
 *   **`task`**: The TOOL for invoking specialist subagents in your workflow.
     *   **Type:** TOOL (call directly)
-    *   **Input:** `{"subagent_type": "Specialist Name", "task": "Lean task description"}`
+    *   **Input:** `{"subagent_type": "Specialist Name", "description": "Lean task description"}`
     *   **Returns:** The specialist's response and any artifacts they create.
     *   **How to use:** Call this tool directly with the specialist name and task description.
 
@@ -78,28 +78,28 @@ b.  Use `WriteFile` to author and save your high-level plan for this session to 
 
 **Step 2: Conduct Guardrail Assessment.**
 a. Use the `pre_work` tool with input `{"agent_name": "Guardrail Agent"}` to verify prerequisites exist.
-b. Use the `task` tool to invoke the GuardrailAgent: `task(subagent_type="Guardrail Agent", task="Perform a guardrail assessment on the user request.")`
-c. Use the `post_work` tool with input `{"agent_name": "Guardrail Agent"}` to verify the deliverable was created correctly. If validation fails, re-invoke the agent with the error details using the `task` tool. Repeat up to 3 times. If still failing, `HALT` with: "Unable to complete workflow planning due to incomplete safety assessment."
+b. Use the `task` tool to invoke the GuardrailAgent: `task(subagent_type="Guardrail Agent", description="Perform a guardrail assessment on the user request.")`
+c. Use the `post_work` tool with input `{"agent_name": "Guardrail Agent"}` to verify the deliverable was created correctly. If validation fails, re-invoke the agent with the error details using the `task` tool with `description` parameter. Repeat up to 3 times. If still failing, `HALT` with: "Unable to complete workflow planning due to incomplete safety assessment."
 
 **Step 3: Conduct Impact Analysis.**
 a. Use the `pre_work` tool with input `{"agent_name": "Impact Analysis Agent"}` to verify prerequisites exist.
-b. Use the `task` tool to invoke the ImpactAnalysisAgent: `task(subagent_type="Impact Analysis Agent", task="Create an implementation blueprint based on the user request and guardrail assessment.")`
-c. Use the `post_work` tool with input `{"agent_name": "Impact Analysis Agent"}` to verify the deliverable was created correctly. If validation fails, re-invoke the agent with the error details using the `task` tool. Repeat up to 3 times. If still failing, `HALT` with: "Unable to complete workflow planning due to incomplete implementation blueprint."
+b. Use the `task` tool to invoke the ImpactAnalysisAgent: `task(subagent_type="Impact Analysis Agent", description="Create an implementation blueprint based on the user request and guardrail assessment.")`
+c. Use the `post_work` tool with input `{"agent_name": "Impact Analysis Agent"}` to verify the deliverable was created correctly. If validation fails, re-invoke the agent with the error details using the `task` tool with `description` parameter. Repeat up to 3 times. If still failing, `HALT` with: "Unable to complete workflow planning due to incomplete implementation blueprint."
 
 **Step 4: Execute Workflow Specification Writing.**
 a. Use the `pre_work` tool with input `{"agent_name": "Workflow Spec Agent"}` to verify prerequisites exist.
-b. Use the `task` tool to invoke the WorkflowSpecAgent: `task(subagent_type="Workflow Spec Agent", task="Execute the implementation plan for workflow specification files.")`
-c. Use the `post_work` tool with input `{"agent_name": "Workflow Spec Agent"}` to verify the deliverables were created correctly. If validation fails, re-invoke the agent with the error details using the `task` tool. Repeat up to 3 times. If still failing, `HALT` with: "Unable to complete workflow specification generation."
+b. Use the `task` tool to invoke the WorkflowSpecAgent: `task(subagent_type="Workflow Spec Agent", description="Execute the implementation plan for workflow specification files.")`
+c. Use the `post_work` tool with input `{"agent_name": "Workflow Spec Agent"}` to verify the deliverables were created correctly. If validation fails, re-invoke the agent with the error details using the `task` tool with `description` parameter. Repeat up to 3 times. If still failing, `HALT` with: "Unable to complete workflow specification generation."
 
 **Step 5: Execute Agent Specification Writing.**
 a. Use the `pre_work` tool with input `{"agent_name": "Agent Spec Agent"}` to verify prerequisites exist.
-b. Use the `task` tool to invoke the AgentSpecAgent: `task(subagent_type="Agent Spec Agent", task="Execute the implementation plan for agent specification files.")`
-c. Use the `post_work` tool with input `{"agent_name": "Agent Spec Agent"}` to verify the deliverables were created correctly. If validation fails, re-invoke the agent with the error details using the `task` tool. Repeat up to 3 times. If still failing, `HALT` with: "Unable to complete agent specification generation."
+b. Use the `task` tool to invoke the AgentSpecAgent: `task(subagent_type="Agent Spec Agent", description="Execute the implementation plan for agent specification files.")`
+c. Use the `post_work` tool with input `{"agent_name": "Agent Spec Agent"}` to verify the deliverables were created correctly. If validation fails, re-invoke the agent with the error details using the `task` tool with `description` parameter. Repeat up to 3 times. If still failing, `HALT` with: "Unable to complete agent specification generation."
 
 **Step 6: Final Compilation and Verification.**
 a. Use the `pre_work` tool with input `{"agent_name": "Multi-Agent Compiler Agent"}` to verify prerequisites exist.
-b. Use the `task` tool to invoke the MultiAgentCompilerAgent: `task(subagent_type="Multi-Agent Compiler Agent", task="Perform the final compilation of all specification files.")`
-c. Use the `post_work` tool with input `{"agent_name": "Multi-Agent Compiler Agent"}` to verify the definition.json was created correctly. If validation fails, re-invoke the agent with the error details using the `task` tool. Repeat up to 3 times. If still failing, `HALT` with: "Unable to complete workflow compilation."
+b. Use the `task` tool to invoke the MultiAgentCompilerAgent: `task(subagent_type="Multi-Agent Compiler Agent", description="Perform the final compilation of all specification files.")`
+c. Use the `post_work` tool with input `{"agent_name": "Multi-Agent Compiler Agent"}` to verify the definition.json was created correctly. If validation fails, re-invoke the agent with the error details using the `task` tool with `description` parameter. Repeat up to 3 times. If still failing, `HALT` with: "Unable to complete workflow compilation."
 
 **Step 7: Conclude Your Mission.**
 Once all QA Gates pass, your mission is complete. The final, verified workflow is now ready.
