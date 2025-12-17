@@ -191,31 +191,102 @@ class FilePatternValidator(ContentValidator):
 class JsonSchemaValidator(ContentValidator):
     """Validates JSON content against a JSON schema."""
     
+    # Embedded schema for definition.json - avoids file loading issues in runtime
+    DEFINITION_SCHEMA = {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "DeepAgents Multi-Agent Workflow Definition Schema",
+        "description": "Schema for validating multi-agent workflow definition.json files",
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "description": "Name of the workflow definition"},
+            "version": {"type": "string", "description": "Version of the workflow definition"},
+            "tool_definitions": {
+                "type": "array",
+                "description": "Array of tool definitions available to agents",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "Name of the tool"},
+                        "runtime": {
+                            "type": "object",
+                            "properties": {
+                                "script": {"type": "string", "description": "Python script implementing the tool"},
+                                "dependencies": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                    "description": "List of Python package dependencies"
+                                }
+                            },
+                            "required": ["script", "dependencies"]
+                        }
+                    },
+                    "required": ["name", "runtime"]
+                }
+            },
+            "nodes": {
+                "type": "array",
+                "description": "Array of agent nodes in the workflow",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string", "description": "Unique identifier for the node"},
+                        "type": {"type": "string", "enum": ["Orchestrator", "Specialist"], "description": "Type of the agent node"},
+                        "config": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string", "description": "Display name of the agent"},
+                                "description": {"type": "string", "description": "Description of the agent's purpose"},
+                                "system_prompt": {"type": "string", "description": "System prompt for the agent"},
+                                "model": {
+                                    "type": "object",
+                                    "properties": {
+                                        "provider": {"type": "string", "enum": ["openai", "anthropic", "ollama"], "description": "LLM provider"},
+                                        "model": {"type": "string", "description": "Model identifier"}
+                                    },
+                                    "required": ["provider", "model"]
+                                },
+                                "tools": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                    "description": "List of tool names available to this agent"
+                                },
+                                "state_schema": {"type": "object", "description": "Optional state schema for agents with state management"}
+                            },
+                            "required": ["name", "system_prompt", "model", "tools"]
+                        }
+                    },
+                    "required": ["id", "type", "config"]
+                }
+            },
+            "edges": {
+                "type": "array",
+                "description": "Array of edges defining workflow connections",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "source": {"type": "string", "description": "Source node ID"},
+                        "target": {"type": "string", "description": "Target node ID"},
+                        "type": {"type": "string", "enum": ["orchestrator", "specialists"], "description": "Type of edge connection"}
+                    },
+                    "required": ["source", "target", "type"]
+                }
+            }
+        },
+        "required": ["name", "version", "tool_definitions", "nodes", "edges"]
+    }
+    
     def __init__(self, schema_path: str):
         self.schema_path = schema_path
         self._schema = None
     
     def _load_schema(self) -> Dict:
-        """Load the JSON schema from file."""
+        """Load the JSON schema - uses embedded schema."""
         if self._schema is None:
-            # Look for schema relative to the mock directory (where schema.json is located)
-            current_dir = Path(__file__).parent  # This is tests/mock/tools/
-            mock_dir = current_dir.parent  # This is tests/mock/
-            schema_file = mock_dir / self.schema_path
-            
-            if not schema_file.exists():
-                # Try relative to current file
-                schema_file = current_dir / self.schema_path
-            
-            if not schema_file.exists():
-                # Try absolute path
-                schema_file = Path(self.schema_path)
-            
-            if not schema_file.exists():
-                raise FileNotFoundError(f"Schema file not found: {self.schema_path}")
-            
-            with open(schema_file, 'r') as f:
-                self._schema = json.load(f)
+            # Use embedded schema for definition.json
+            if self.schema_path == "schema.json":
+                self._schema = self.DEFINITION_SCHEMA
+            else:
+                raise ValueError(f"Unknown schema: {self.schema_path}. Only 'schema.json' is supported.")
         
         return self._schema
     
