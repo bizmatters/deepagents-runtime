@@ -58,15 +58,21 @@ class ExecutionStrategy:
 class RealExecutionStrategy(ExecutionStrategy):
     """Real execution strategy using actual LLM calls."""
     
+    def __init__(self, execution_manager):
+        self.execution_manager = execution_manager
+    
     def execute_workflow(self, graph_builder, agent_definition, job_id: str, trace_id: str) -> Any:
         """Execute workflow with real LLM."""
         print(f"[EXECUTION] Real LLM execution for job_id: {job_id}")
         compiled_graph = graph_builder.build_from_definition(agent_definition)
         
-        # Execute the compiled graph
-        result = compiled_graph.invoke(
-            {"user_request": agent_definition.get("user_request", "")},
-            config={"configurable": {"thread_id": job_id}}
+        # Use the execution manager for proper execution
+        input_payload = {"user_request": agent_definition.get("user_request", "")}
+        result = self.execution_manager.execute(
+            graph=compiled_graph,
+            job_id=job_id,
+            input_payload=input_payload,
+            trace_id=trace_id
         )
         return result
 
@@ -109,9 +115,10 @@ class ExecutionFactory:
         Returns:
             Execution strategy instance
         """
+        if execution_manager is None:
+            raise ValueError("Execution manager is required for all execution strategies")
+            
         if TestConfig.is_mock_mode():
-            if execution_manager is None:
-                raise ValueError("Execution manager required for mock execution strategy")
             return MockExecutionStrategy(execution_manager)
         else:
-            return RealExecutionStrategy()
+            return RealExecutionStrategy(execution_manager)

@@ -719,81 +719,25 @@ async def process_cloudevent(
             # Use execution strategy pattern for clean separation of concerns
             from core.model_factory import ExecutionFactory
             
-            try:
-                execution_strategy = ExecutionFactory.create_strategy(execution_manager=execution_manager)
-                
-                if tracer:
-                    with tracer.start_as_current_span("execute_agent", context=ctx) as span:
-                        span.set_attribute("job_id", job_id)
-                        span.set_attribute("trace_id", trace_id)
-                        span.set_attribute("thread_id", job_id)
-                        logger.info("executing_agent", job_id=job_id, trace_id=trace_id)
-                        
-                        # Use strategy pattern for execution
-                        if hasattr(execution_strategy, 'execute_workflow'):
-                            # New strategy pattern
-                            result = execution_strategy.execute_workflow(
-                                graph_builder, agent_definition, job_id, trace_id
-                            )
-                        else:
-                            # Fallback to original execution manager
-                            result = execution_manager.execute(
-                                graph=compiled_graph,
-                                job_id=job_id,
-                                input_payload=input_payload,
-                                trace_id=trace_id
-                            )
-                        
-                        logger.info(
-                            "agent_execution_completed",
-                            job_id=job_id,
-                            trace_id=trace_id,
-                            has_result=bool(result)
-                        )
-                else:
+            execution_strategy = ExecutionFactory.create_strategy(execution_manager=execution_manager)
+            
+            def execute_with_strategy():
+                return execution_strategy.execute_workflow(
+                    graph_builder, agent_definition, job_id, trace_id
+                )
+            
+            if tracer:
+                with tracer.start_as_current_span("execute_agent", context=ctx) as span:
+                    span.set_attribute("job_id", job_id)
+                    span.set_attribute("trace_id", trace_id)
+                    span.set_attribute("thread_id", job_id)
                     logger.info("executing_agent", job_id=job_id, trace_id=trace_id)
-                    
-                    # Use strategy pattern for execution
-                    if hasattr(execution_strategy, 'execute_workflow'):
-                        # New strategy pattern
-                        result = execution_strategy.execute_workflow(
-                            graph_builder, agent_definition, job_id, trace_id
-                        )
-                    else:
-                        # Fallback to original execution manager
-                        result = execution_manager.execute(
-                            graph=compiled_graph,
-                            job_id=job_id,
-                            input_payload=input_payload,
-                            trace_id=trace_id
-                        )
-                    
-                    logger.info(
-                        "agent_execution_completed",
-                        job_id=job_id,
-                        trace_id=trace_id,
-                        has_result=bool(result)
-                    )
-            except Exception as e:
-                logger.error("execution_strategy_failed", job_id=job_id, trace_id=trace_id, error=str(e))
-                # Fallback to original execution
-                if tracer:
-                    with tracer.start_as_current_span("execute_agent_fallback", context=ctx) as span:
-                        span.set_attribute("job_id", job_id)
-                        span.set_attribute("trace_id", trace_id)
-                        result = execution_manager.execute(
-                            graph=compiled_graph,
-                            job_id=job_id,
-                            input_payload=input_payload,
-                            trace_id=trace_id
-                        )
-                else:
-                    result = execution_manager.execute(
-                        graph=compiled_graph,
-                        job_id=job_id,
-                        input_payload=input_payload,
-                        trace_id=trace_id
-                    )
+                    result = execute_with_strategy()
+                    logger.info("agent_execution_completed", job_id=job_id, trace_id=trace_id, has_result=bool(result))
+            else:
+                logger.info("executing_agent", job_id=job_id, trace_id=trace_id)
+                result = execute_with_strategy()
+                logger.info("agent_execution_completed", job_id=job_id, trace_id=trace_id, has_result=bool(result))
 
             # Step 3: Emit job.completed CloudEvent
             logger.info("emitting_completed_event", job_id=job_id, trace_id=trace_id)
