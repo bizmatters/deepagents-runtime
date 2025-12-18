@@ -74,7 +74,6 @@ print(f"  Host:             {REDIS_HOST}")
 print(f"  Port:             {REDIS_PORT}")
 print(f"  Password:         {'*' * len(REDIS_PASSWORD) if REDIS_PASSWORD else 'None'}")
 print(f"\nOther:")
-print(f"  Vault Auth:       Disabled")
 print("=" * 80 + "\n")
 
 # ============================================================================
