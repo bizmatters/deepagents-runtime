@@ -30,21 +30,26 @@ echo "==========================================================================
 # Create artifacts directory
 mkdir -p "${ARTIFACTS_DIR}"
 
-# Validate required environment variables
-REQUIRED_VARS=("OPENAI_API_KEY")
-MISSING_VARS=()
+# Validate required environment variables (skip if using mock mode)
+if [ "${USE_MOCK_LLM:-false}" != "true" ]; then
+    REQUIRED_VARS=("OPENAI_API_KEY")
+    MISSING_VARS=()
 
-for var in "${REQUIRED_VARS[@]}"; do
-    # Use :- to provide empty default, preventing unbound variable error
-    if [ -z "${!var:-}" ]; then
-        MISSING_VARS+=("$var")
+    for var in "${REQUIRED_VARS[@]}"; do
+        # Use :- to provide empty default, preventing unbound variable error
+        if [ -z "${!var:-}" ]; then
+            MISSING_VARS+=("$var")
+        fi
+    done
+
+    if [ ${#MISSING_VARS[@]} -gt 0 ]; then
+        log_error "Missing required environment variables:"
+        printf '  - %s\n' "${MISSING_VARS[@]}"
+        exit 1
     fi
-done
-
-if [ ${#MISSING_VARS[@]} -gt 0 ]; then
-    log_error "Missing required environment variables:"
-    printf '  - %s\n' "${MISSING_VARS[@]}"
-    exit 1
+else
+    log_info "🤖 Running in mock mode - skipping API key validation"
+    export OPENAI_API_KEY="mock-key-for-testing"
 fi
 
 # Optional: ANTHROPIC_API_KEY (warn if missing)

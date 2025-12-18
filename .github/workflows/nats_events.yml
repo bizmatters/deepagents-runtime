@@ -88,7 +88,6 @@ jobs:
       - name: Bootstrap Platform Preview Environment
         working-directory: zerotouch-platform
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           BOT_GITHUB_USERNAME: ${{ secrets.BOT_GITHUB_USERNAME }}
           BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
         run: |
