@@ -1,0 +1,3 @@
+[submodule "tests/mock"]
+	path = tests/mock
+	url = git@github.com:arun4infra/spec-engine.git
