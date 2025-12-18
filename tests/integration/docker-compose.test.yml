@@ -32,19 +32,6 @@ services:
     volumes:
       - redis_test_data:/data
 
-  nats:
-    image: nats:latest
-    container_name: agent-executor-test-nats
-    command: ["-js", "-m", "8222"]  # Enable JetStream and monitoring
-    ports:
-      - "14222:4222"  # NATS client port
-      - "18222:8222"  # NATS monitoring port
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
 volumes:
   postgres_test_data:
   redis_test_data:

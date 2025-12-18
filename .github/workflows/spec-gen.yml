@@ -79,7 +79,6 @@ jobs:
           DRAGONFLY_PORT: 16380
           REDIS_HOST: localhost
           REDIS_PORT: 16380
-          NATS_URL: nats://localhost:14222
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
@@ -104,8 +103,7 @@ jobs:
           DRAGONFLY_PORT: 16380
           REDIS_HOST: localhost
           REDIS_PORT: 16380
-          NATS_URL: nats://localhost:14222
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           pytest tests/integration/test_agent_generation_workflow.py::test_agent_generation_end_to_end_success -v --tb=short --junit-xml=artifacts/test-results.xml
