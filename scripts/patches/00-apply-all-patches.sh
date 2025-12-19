@@ -23,6 +23,13 @@ echo -e "${BLUE}║   Applying Preview Environment Patches                      
 echo -e "${BLUE}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
+# Check if patches already applied
+PATCH_MARKER="/tmp/.deepagents-patches-applied"
+if [ -f "$PATCH_MARKER" ] && [ "$1" != "--force" ]; then
+    echo -e "${YELLOW}Patches already applied. Use --force to reapply.${NC}"
+    exit 0
+fi
+
 # Run all numbered patch scripts (01-*, 02-*, etc.)
 for script in "$SCRIPT_DIR"/[0-9][0-9]-*.sh; do
     if [ -f "$script" ] && [ "$script" != "$0" ]; then
@@ -33,5 +40,8 @@ for script in "$SCRIPT_DIR"/[0-9][0-9]-*.sh; do
         echo ""
     fi
 done
+
+# Mark patches as applied
+touch "$PATCH_MARKER"
 
 echo -e "${GREEN}✓ All preview patches applied successfully${NC}"

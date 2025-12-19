@@ -80,6 +80,57 @@ deepagents_runtime_nats_messages_failed_total = Counter(
     registry=registry
 )
 
+# HTTP API metrics
+deepagents_runtime_http_requests_total = Counter(
+    'deepagents_runtime_http_requests_total',
+    'Total number of HTTP API requests',
+    ['method', 'endpoint', 'status'],  # method=GET|POST, endpoint=invoke|state, status=200|400|500
+    registry=registry
+)
+
+deepagents_runtime_http_request_duration_seconds = Histogram(
+    'deepagents_runtime_http_request_duration_seconds',
+    'Duration of HTTP API requests in seconds',
+    ['method', 'endpoint'],
+    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
+    registry=registry
+)
+
+# WebSocket metrics
+deepagents_runtime_websocket_connections_total = Counter(
+    'deepagents_runtime_websocket_connections_total',
+    'Total number of WebSocket connections established',
+    registry=registry
+)
+
+deepagents_runtime_websocket_connections_active = Counter(
+    'deepagents_runtime_websocket_connections_active',
+    'Number of currently active WebSocket connections',
+    registry=registry
+)
+
+deepagents_runtime_websocket_messages_sent_total = Counter(
+    'deepagents_runtime_websocket_messages_sent_total',
+    'Total number of WebSocket messages sent',
+    ['event_type'],  # event_type=on_state_update|on_llm_stream|end|error
+    registry=registry
+)
+
+deepagents_runtime_websocket_duration_seconds = Histogram(
+    'deepagents_runtime_websocket_duration_seconds',
+    'Duration of WebSocket connections in seconds',
+    buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0],
+    registry=registry
+)
+
+# Health check metrics
+deepagents_runtime_health_checks_total = Counter(
+    'deepagents_runtime_health_checks_total',
+    'Total number of health check requests',
+    ['type', 'status'],  # type=liveness|readiness, status=healthy|unhealthy
+    registry=registry
+)
+
 
 def get_metrics() -> tuple[bytes, str]:
     """

@@ -63,206 +63,12 @@ def _get_test_model():
 
 
 # ============================================================================
-# INFRASTRUCTURE FIXTURES - Real Database Connections
+# FIXTURES
 # ============================================================================
 
-# PostgreSQL Connection Fixture
-@pytest.fixture(scope="function")
-def postgres_connection() -> Generator[psycopg.Connection, None, None]:
-    """
-    Real PostgreSQL connection for integration testing with schema migrations.
-
-    This fixture connects to the PostgreSQL database and ensures checkpoint tables exist.
-    
-    Modes:
-        - Local (Docker Compose): Runs migrations and drops tables on cleanup
-        - Deployed (K8s): Uses existing tables, skips cleanup to preserve service state
-
-    Tables Required:
-        - checkpoint_migrations: Migration tracking (v=9)
-        - checkpoints: Main checkpoint state (thread_id, checkpoint_id, checkpoint JSONB, metadata)
-        - checkpoint_blobs: Channel values (thread_id, channel, version, blob BYTEA)
-        - checkpoint_writes: Pending writes (thread_id, checkpoint_id, task_id, blob BYTEA)
-
-    Yields:
-        psycopg.Connection: Active PostgreSQL connection
-    """
-    # Connect to PostgreSQL test database with retry logic for CI stability
-    # Support both local Docker Compose and deployed K8s via environment variables
-    max_retries = 3
-    retry_delay = 1
-    conn = None
-    
-    for attempt in range(max_retries):
-        try:
-            conn = psycopg.connect(
-                host=os.environ.get("TEST_POSTGRES_HOST", "localhost"),
-                port=int(os.environ.get("TEST_POSTGRES_PORT", "15433")),
-                user=os.environ.get("TEST_POSTGRES_USER", "test_user"),
-                password=os.environ.get("TEST_POSTGRES_PASSWORD", "test_pass"),
-                dbname=os.environ.get("TEST_POSTGRES_DB", "test_db")
-            )
-            print(f"PostgreSQL connection established (attempt {attempt + 1})")
-            break
-        except Exception as e:
-            if attempt < max_retries - 1:
-                print(f"PostgreSQL connection failed (attempt {attempt + 1}): {e}. Retrying in {retry_delay}s...")
-                time.sleep(retry_delay)
-                retry_delay *= 2  # Exponential backoff
-            else:
-                raise
-    
-    if conn is None:
-        raise RuntimeError("Failed to establish PostgreSQL connection after retries")
-
-    # Check if we're testing against deployed K8s (tables already exist from service)
-    # If TEST_POSTGRES_USER is not "test_user", we're likely testing against deployed env
-    is_deployed_env = os.environ.get("TEST_POSTGRES_USER", "test_user") != "test_user"
-    tables_created_by_fixture = False
-
-    with conn.cursor() as cur:
-        # Check if checkpoint tables already exist
-        cur.execute("""
-            SELECT COUNT(*) FROM information_schema.tables
-            WHERE table_schema = 'public'
-              AND table_name IN ('checkpoint_migrations', 'checkpoints', 'checkpoint_blobs', 'checkpoint_writes')
-        """)
-        existing_table_count = cur.fetchone()[0]
-
-        if existing_table_count == 4:
-            # Tables already exist (deployed env or previous test run)
-            print(f"Checkpoint tables already exist ({existing_table_count}/4)")
-        else:
-            # Run migration script to create checkpoint tables
-            migration_file = Path(__file__).parent.parent.parent / "migrations" / "001_create_checkpointer_tables.up.sql"
-            if migration_file.exists():
-                migration_sql = migration_file.read_text()
-                cur.execute(migration_sql)
-                conn.commit()
-                tables_created_by_fixture = True
-                print("Created checkpoint tables via migration")
-            else:
-                raise FileNotFoundError(f"Migration file not found: {migration_file}")
-
-        # Verify tables exist
-        cur.execute("""
-            SELECT COUNT(*) FROM information_schema.tables
-            WHERE table_schema = 'public'
-              AND table_name IN ('checkpoint_migrations', 'checkpoints', 'checkpoint_blobs', 'checkpoint_writes')
-        """)
-        table_count = cur.fetchone()[0]
-        assert table_count == 4, f"Expected 4 checkpoint tables in public schema, found {table_count}"
-
-    yield conn
-
-    # Cleanup: Only drop tables if we created them AND not testing against deployed env
-    if tables_created_by_fixture and not is_deployed_env:
-        with conn.cursor() as cur:
-            cur.execute("DROP TABLE IF EXISTS checkpoint_writes")
-            cur.execute("DROP TABLE IF EXISTS checkpoint_blobs")
-            cur.execute("DROP TABLE IF EXISTS checkpoints")
-            cur.execute("DROP TABLE IF EXISTS checkpoint_migrations")
-            conn.commit()
-            print("Cleaned up checkpoint tables")
-    else:
-        print("Skipping table cleanup (deployed environment or tables pre-existed)")
-
-    conn.close()
-
-
-# Redis Connection Fixture
-@pytest.fixture
-def redis_client() -> Generator[redis.Redis, None, None]:
-    """
-    Real Redis client for integration testing.
-
-    This fixture connects to the Redis instance running via Docker Compose
-    at localhost:6380.
-
-    Yields:
-        redis.Redis: Active Redis client with decode_responses=True
-
-    Cleanup:
-        Flushes test database after each test
-    """
-    # Connect to Redis test instance
-    # Support both local Docker Compose and deployed K8s via environment variables
-    redis_password = os.environ.get("TEST_REDIS_PASSWORD")
-    client = redis.Redis(
-        host=os.environ.get("TEST_REDIS_HOST", "localhost"),
-        port=int(os.environ.get("TEST_REDIS_PORT", "16380")),
-        password=redis_password if redis_password else None,
-        decode_responses=True
-    )
-
-    # Verify connection
-    client.ping()
-
-    yield client
-
-    # Cleanup: Flush test database
-    client.flushdb()
-    client.close()
-
-
-# NATS Connection Fixture
-@pytest.fixture
-async def nats_client():
-    """
-    Real NATS client for integration testing.
-
-    This fixture connects to the NATS instance and ensures the required
-    streams exist for testing (AGENT_STATUS for result events).
-
-    Yields:
-        tuple: (nats.NATS connection, JetStream context)
-
-    Cleanup:
-        Closes NATS connection after each test
-    """
-    import nats
-    from nats.js.api import StreamConfig
-    
-    # Connect to NATS test instance
-    # Support both local Docker Compose and deployed K8s via environment variables
-    nats_url = os.environ.get("TEST_NATS_URL", "nats://localhost:14222")
-    nc = await nats.connect(nats_url)
-    
-    # Get JetStream context
-    js = nc.jetstream()
-    
-    # Ensure AGENT_STATUS stream exists for capturing result CloudEvents
-    # The CloudEventEmitter publishes to agent.status.completed and agent.status.failed
-    try:
-        await js.stream_info("AGENT_STATUS")
-    except Exception:
-        # Stream doesn't exist, create it
-        await js.add_stream(
-            name="AGENT_STATUS",
-            subjects=["agent.status.*"],
-            retention="limits",
-            max_age=3600,  # 1 hour retention for tests
-            storage="memory",  # Use memory for faster tests
-        )
-    
-    # Ensure AGENT_EXECUTION stream exists for publishing execution requests
-    # The NATS consumer listens to agent.execute.* subjects
-    try:
-        await js.stream_info("AGENT_EXECUTION")
-    except Exception:
-        # Stream doesn't exist, create it
-        await js.add_stream(
-            name="AGENT_EXECUTION",
-            subjects=["agent.execute.*"],
-            retention="limits",
-            max_age=3600,  # 1 hour retention for tests
-            storage="memory",  # Use memory for faster tests
-        )
-    
-    yield nc, js
-    
-    # Cleanup: Close connection (don't delete stream - may be used by other tests)
-    await nc.close()
+# Note: PostgreSQL, Redis, and NATS fixtures removed - the test now uses
+# the app's actual service clients via dependency injection for better
+# integration testing that matches production behavior.
 
 
 # ============================================================================
@@ -355,9 +161,6 @@ def sample_cloudevent(sample_job_execution_event: Dict[str, Any]) -> Dict[str, A
 # Test 1: Agent Generation Workflow (No NATS)
 @pytest.mark.asyncio
 async def test_agent_generation_end_to_end_success(
-    postgres_connection: psycopg.Connection,
-    redis_client: redis.Redis,
-    nats_client,
     sample_cloudevent: Dict[str, Any],
     monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -522,46 +325,14 @@ async def test_agent_generation_end_to_end_success(
     monkeypatch.setenv("NATS_URL", test_nats_url)
     print(f"[DEBUG] CRITICAL: Set NATS_URL to {test_nats_url} (overriding .env file)")
 
-    # Subscribe to Redis channel BEFORE execution to capture all events
-    print("[DEBUG] Setting up Redis pub/sub...")
-    pubsub = redis_client.pubsub()
-    channel = f"langgraph:stream:{sample_job_execution_event['job_id']}"
-    pubsub.subscribe(channel)
-    print(f"[DEBUG] Subscribed to Redis channel: {channel}")
-
-    # Start listening in a separate thread (non-blocking)
-    streaming_events: List[Dict[str, Any]] = []
-
-    def capture_events():
-        """Capture streaming events from Redis pub/sub."""
-        for message in pubsub.listen():
-            if message['type'] == 'message':
-                try:
-                    event_data = json.loads(message['data'])
-                    streaming_events.append(event_data)
-
-                    # Stop after final "end" event
-                    if event_data.get("event_type") == "end":
-                        break
-                except json.JSONDecodeError:
-                    pass  # Ignore non-JSON messages
-
-    # Start event capture in background (NOTE: For real async testing, use asyncio)
-    # For this test, we'll verify events after execution completes
-    import threading
-    capture_thread = threading.Thread(target=capture_events, daemon=True)
-    capture_thread.start()
-    print("[DEBUG] Started Redis event capture thread")
-
-    # NOTE: NATS subscription setup removed for Test 1 (Agent Generation Only)
-
     # Setup mock workflow if in mock mode
     from tests.utils.mock_workflow import is_mock_mode, setup_mock_workflow_for_test
     mock_coordinator = None
     
     if is_mock_mode():
         print("[DEBUG] Setting up mock workflow...")
-        mock_coordinator = setup_mock_workflow_for_test(redis_client, sample_job_execution_event["job_id"])
+        # We'll update the Redis client after the app starts
+        mock_coordinator = setup_mock_workflow_for_test(None, sample_job_execution_event["job_id"])
 
     # Import app after environment is configured with model patching
     print("[DEBUG] Importing FastAPI app...")
@@ -587,12 +358,74 @@ async def test_agent_generation_end_to_end_success(
     
     try:
         from api.main import app
-        print("[DEBUG] App imported successfully")
+        print("[DEBUG] App imported successfully (new modular structure)")
 
         # Create test client with lifespan context
         print("[DEBUG] Creating TestClient (this starts app lifespan)...")
         with TestClient(app) as client:
             print("[DEBUG] TestClient created, app lifespan started")
+            
+            # CRITICAL FIX: Get the app's service clients after lifespan startup
+            # This ensures we use the same client instances for both the app and the test
+            print("[DEBUG] Getting app's service clients after lifespan startup...")
+            from api.dependencies import get_redis_client, get_execution_manager
+            
+            app_redis_client = get_redis_client()
+            app_execution_manager = get_execution_manager()
+            
+            print("[DEBUG] App service clients obtained successfully")
+            print(f"[DEBUG] - Redis client: {type(app_redis_client).__name__}")
+            print(f"[DEBUG] - Execution manager: {type(app_execution_manager).__name__}")
+            print("[DEBUG] - NATS consumer: Not used in this test (Agent Generation Only)")
+            
+            # Update mock coordinator to use the app's Redis client
+            if is_mock_mode() and mock_coordinator:
+                print("[DEBUG] Updating mock coordinator to use app's Redis client...")
+                mock_coordinator.redis_client = app_redis_client.client  # Use underlying Redis client
+                mock_coordinator.replay_mock.redis_client = app_redis_client.client
+                print("[DEBUG] Mock coordinator updated successfully")
+            
+            # Subscribe to Redis channel using the app's Redis client
+            print("[DEBUG] Setting up Redis pub/sub with app's Redis client...")
+            pubsub = app_redis_client.client.pubsub()  # Access the underlying Redis client
+            channel = f"langgraph:stream:{sample_job_execution_event['job_id']}"
+            pubsub.subscribe(channel)
+            print(f"[DEBUG] Subscribed to Redis channel: {channel}")
+            
+            # Start listening in a separate thread (non-blocking)
+            streaming_events: List[Dict[str, Any]] = []
+
+            def capture_events():
+                """Capture streaming events from Redis pub/sub."""
+                for message in pubsub.listen():
+                    if message['type'] == 'message':
+                        try:
+                            event_data = json.loads(message['data'])
+                            streaming_events.append(event_data)
+
+                            # Stop after final "end" event
+                            if event_data.get("event_type") == "end":
+                                break
+                        except json.JSONDecodeError:
+                            pass  # Ignore non-JSON messages
+
+            # Start event capture in background
+            import threading
+            capture_thread = threading.Thread(target=capture_events, daemon=True)
+            capture_thread.start()
+            print("[DEBUG] Started Redis event capture thread")
+            
+            # Start mock workflow execution BEFORE sending HTTP request if in mock mode
+            if is_mock_mode() and mock_coordinator:
+                print("[DEBUG] Starting mock workflow execution BEFORE HTTP request...")
+                # Start the mock workflow in a separate thread so it doesn't block
+                def start_mock_replay():
+                    time.sleep(0.5)  # Small delay to ensure HTTP request starts first
+                    mock_coordinator.replay_mock.start_replay(app_redis_client.client, sample_job_execution_event["job_id"])
+                
+                mock_thread = threading.Thread(target=start_mock_replay, daemon=True)
+                mock_thread.start()
+                print("[DEBUG] Mock workflow thread started")
             
             # Prepare CloudEvent request (still needed for API, but no NATS validation)
             headers = {
@@ -610,16 +443,6 @@ async def test_agent_generation_end_to_end_success(
                 headers=headers
             )
             print(f"[DEBUG] Response received: {response.status_code}")
-            
-            # Start mock workflow execution if in mock mode
-            if is_mock_mode() and mock_coordinator:
-                print("[DEBUG] Starting mock workflow execution...")
-                # Start the mock workflow immediately (synchronously)
-                mock_coordinator.replay_mock.start_replay(redis_client, sample_job_execution_event["job_id"])
-                
-                # In mock mode, we don't want the real workflow to execute
-                # The HTTP response is just acknowledgment, real execution is bypassed
-                print("[DEBUG] Mock mode: Real workflow execution will be bypassed")
 
             # ================================================================
             # VALIDATION 1: HTTP Response
@@ -813,8 +636,18 @@ async def test_agent_generation_end_to_end_success(
             # ================================================================
             # VALIDATION 2: PostgreSQL Checkpoint Validation
             # ================================================================
-            # Query checkpoints written during execution
+            # Query checkpoints written during execution using the app's PostgreSQL connection
+            print("[DEBUG] Creating PostgreSQL connection using app's connection string...")
+            import psycopg
+            
+            # Use the same connection string as the app
+            postgres_conn_string = app_execution_manager.postgres_connection_string
+            print(f"[DEBUG] Using PostgreSQL connection string from app")
+            
+            # Create connection and extract checkpoints
+            postgres_connection = psycopg.connect(postgres_conn_string)
             checkpoints = extract_checkpoints(postgres_connection, sample_job_execution_event["job_id"])
+            print(f"[DEBUG] Extracted {len(checkpoints)} checkpoints from PostgreSQL")
 
             # ================================================================
             # ARTIFACT COLLECTION: Save checkpoints to file
@@ -1825,6 +1658,11 @@ async def test_agent_generation_end_to_end_success(
         if is_mock_mode() and mock_coordinator:
             from tests.utils.mock_workflow import cleanup_mock_workflow
             cleanup_mock_workflow(sample_job_execution_event["job_id"])
+        
+        # Close PostgreSQL connection if it was created
+        if 'postgres_connection' in locals() and postgres_connection:
+            postgres_connection.close()
+            print("[DEBUG] PostgreSQL connection closed")
     
     finally:
         # Stop model patches if they were started
@@ -1837,45 +1675,35 @@ async def test_agent_generation_end_to_end_success(
 # Test 2: Fixtures Configuration Test
 @pytest.mark.asyncio
 async def test_fixtures_are_properly_configured(
-    postgres_connection: psycopg.Connection,
-    redis_client: redis.Redis,
-    nats_client,
     sample_agent_definition: Dict[str, Any],
     sample_job_execution_event: Dict[str, Any],
     sample_cloudevent: Dict[str, Any]
 ) -> None:
     """
-    Test that all fixtures are properly configured and accessible.
+    Test that sample data fixtures are properly configured.
     
-    This test validates:
-    - PostgreSQL connection and checkpoint tables
-    - Redis connection
-    - Sample data fixtures load correctly
+    This test validates that the test data is working correctly
+    before running the main integration tests.
+    
+    Note: Service client fixtures (PostgreSQL, Redis, NATS) were removed
+    since the integration test now uses the app's actual service clients
+    via dependency injection for better production-like testing.
     """
-    print("\n[DEBUG] Testing fixture configuration...")
-    
-    # Test PostgreSQL connection
-    with postgres_connection.cursor() as cur:
-        cur.execute("SELECT 1")
-        result = cur.fetchone()
-        assert result[0] == 1, "PostgreSQL connection test failed"
-    
-    # Test Redis connection
-    redis_client.set("test_key", "test_value")
-    assert redis_client.get("test_key") == "test_value", "Redis connection test failed"
-    redis_client.delete("test_key")
-    
-    # Test NATS connection
-    nc, js = nats_client
-    assert nc.is_connected, "NATS connection test failed"
+    print("\n[DEBUG] Testing sample data fixture configuration...")
     
     # Test sample data
+    assert sample_agent_definition is not None, "sample_agent_definition is None"
+    assert sample_job_execution_event is not None, "sample_job_execution_event is None"
+    assert sample_cloudevent is not None, "sample_cloudevent is None"
+    
+    # Test sample data structure
     assert "job_id" in sample_job_execution_event, "sample_job_execution_event missing job_id"
     assert "agent_definition" in sample_job_execution_event, "sample_job_execution_event missing agent_definition"
     assert "data" in sample_cloudevent, "sample_cloudevent missing data"
     assert sample_cloudevent["data"] == sample_job_execution_event, "CloudEvent data mismatch"
     
-    print("✅ All fixtures properly configured")
+    print("✅ All sample data fixtures configured correctly")
+    print("ℹ️  Service clients (PostgreSQL, Redis, NATS) are now obtained from the app via dependency injection")
 
 
 # ============================================================================

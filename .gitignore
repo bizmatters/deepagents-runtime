@@ -16,3 +16,4 @@ tests/utils/outputs
 tests/mock/*
 !tests/mock/.gitkeep
 scripts/local/logs/
+artifacts

@@ -469,6 +469,27 @@ class NATSConsumer:
         # trace_flags: "01" means sampled
         return f"00-{normalized_trace_id}-{parent_id}-01"
 
+    async def wait_for_connection(self, timeout: float = 10.0) -> bool:
+        """
+        Wait for NATS connection to be established.
+
+        Args:
+            timeout: Maximum time to wait in seconds
+
+        Returns:
+            True if connection is established, False if timeout
+
+        References:
+            - Requirements: Req. 17.3
+            - Tasks: Task 1.6
+        """
+        start_time = asyncio.get_event_loop().time()
+        while asyncio.get_event_loop().time() - start_time < timeout:
+            if self.nc is not None and not self.nc.is_closed:
+                return True
+            await asyncio.sleep(0.1)
+        return False
+
     def health_check(self) -> bool:
         """
         Check if NATS consumer is healthy.

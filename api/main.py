@@ -7,13 +7,16 @@ orchestrates agent execution, and emits result CloudEvents.
 
 The application provides:
 - CloudEvent ingestion endpoint (POST /)
-- Health check endpoint (GET /health)
+- Health check endpoints (GET /health, GET /ready)
+- HTTP API endpoints for IDE Orchestrator integration
+- WebSocket streaming endpoints
+- Prometheus metrics endpoint
 - Dependency injection for all service components
 - Structured logging and OpenTelemetry tracing
-- Error handling for malformed events and execution failures
 
 Architecture:
     NATS JetStream → NATS Consumer → Parse CloudEvent → Build Graph → Execute → Emit Result
+    IDE Orchestrator → HTTP/WebSocket API → Agent Execution → Real-time Streaming
 
 References:
     - Requirements: Req. 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3, 3.1, 5.1, 5.3, 5.5, NFR-3.1, NFR-4.1
@@ -21,55 +24,58 @@ References:
     - Tasks: Task 8 (FastAPI Application and Endpoint)
 """
 
+import asyncio
 import logging
 import os
-import time
 import traceback
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Dict
+from pathlib import Path
+from typing import Any, AsyncGenerator
 
 import structlog
-from pathlib import Path
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
-from fastapi.responses import JSONResponse
-from pydantic import ValidationError
+from fastapi import Depends, FastAPI
 
 # Import OpenTelemetry instrumentation
 try:
     from opentelemetry import trace
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    from opentelemetry.sdk.resources import Resource, SERVICE_NAME
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
-    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-    from opentelemetry.sdk.resources import Resource, SERVICE_NAME
-    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-    from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+
     OTEL_AVAILABLE = True
 except ImportError:
     OTEL_AVAILABLE = False
     import warnings
+
     warnings.warn(
         "OpenTelemetry FastAPI instrumentation not available. "
         "Install opentelemetry-instrumentation-fastapi for tracing support.",
-        ImportWarning
+        ImportWarning,
     )
 
 # Import service components
-from core.builder import GraphBuilder
 from core.executor import ExecutionManager
-from models.events import JobExecutionEvent
 from services.cloudevents import CloudEventEmitter
 from services.redis import RedisClient
 
-# Import observability components
-from observability.metrics import (
-    deepagents_runtime_jobs_total,
-    deepagents_runtime_job_duration_seconds,
-    get_metrics
-)
+# Import routers
+from api.routers import cloudevents, deepagents, health, metrics
 
-# Import asyncio for background tasks
-import asyncio
+# Import dependencies
+from api.dependencies import (
+    get_cloudevent_emitter,
+    get_execution_manager,
+    get_graph_builder,
+    get_nats_consumer,
+    get_redis_client,
+    set_cloudevent_emitter,
+    set_execution_manager,
+    set_nats_consumer,
+    set_redis_client,
+)
 
 # Configure structured logging
 structlog.configure(
@@ -77,7 +83,7 @@ structlog.configure(
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
         structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.JSONRenderer()
+        structlog.processors.JSONRenderer(),
     ],
     wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
     context_class=dict,
@@ -93,9 +99,7 @@ if OTEL_AVAILABLE:
     service_name = os.getenv("OTEL_SERVICE_NAME", "agent-executor-service")
 
     # Create resource with service name
-    resource = Resource(attributes={
-        SERVICE_NAME: service_name
-    })
+    resource = Resource(attributes={SERVICE_NAME: service_name})
 
     # Create TracerProvider with resource
     tracer_provider = TracerProvider(resource=resource)
@@ -116,20 +120,10 @@ if OTEL_AVAILABLE:
     tracer = trace.get_tracer(__name__)
 
     logger.info(
-        "opentelemetry_sdk_configured",
-        service_name=service_name,
-        otlp_endpoint=otlp_endpoint
+        "opentelemetry_sdk_configured", service_name=service_name, otlp_endpoint=otlp_endpoint
     )
 else:
     tracer = None
-
-
-# Global service instances (initialized in lifespan)
-_redis_client: RedisClient | None = None
-_execution_manager: ExecutionManager | None = None
-_cloudevent_emitter: CloudEventEmitter | None = None
-_nats_consumer: Any = None
-_nats_consumer_task: asyncio.Task | None = None
 
 
 @asynccontextmanager
@@ -157,14 +151,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         - Requirements: Req. 1.1, 1.2, 2.1, 14.1, 14.2, NFR-3.1
         - Tasks: Task 1.1, 1.2, 1.3
     """
-    global _redis_client, _execution_manager, _cloudevent_emitter, _nats_consumer, _nats_consumer_task
-
     # Load .env file if it exists (for local development/testing)
     # Use explicit path to ensure .env is found regardless of working directory
     env_path = Path(__file__).parent.parent / ".env"
     load_dotenv(dotenv_path=env_path)
 
     logger.info("deepagents_runtime_service_starting")
+
+    # Service instances
+    redis_client = None
+    execution_manager = None
+    cloudevent_emitter = None
+    nats_consumer = None
+    nats_consumer_task = None
 
     try:
         # Validate required environment variables
@@ -173,11 +172,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         if missing_vars:
             error_msg = f"Missing required environment variables: {', '.join(missing_vars)}"
-            logger.error(
-                "startup_validation_failed",
-                missing_variables=missing_vars,
-                message=error_msg
-            )
+            logger.error("startup_validation_failed", missing_variables=missing_vars, message=error_msg)
             raise RuntimeError(error_msg)
 
         # Build PostgreSQL credentials from environment variables
@@ -187,24 +182,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             "port": int(os.getenv("POSTGRES_PORT", "5432")),
             "database": os.getenv("POSTGRES_DB", "langgraph_dev"),
             "username": os.getenv("POSTGRES_USER", "postgres"),
-            "password": os.getenv("POSTGRES_PASSWORD")
+            "password": os.getenv("POSTGRES_PASSWORD"),
         }
 
         # Build Dragonfly (Redis-compatible) configuration from environment variables
         dragonfly_config = {
             "host": os.getenv("DRAGONFLY_HOST"),
             "port": int(os.getenv("DRAGONFLY_PORT", "6379")),
-            "password": os.getenv("DRAGONFLY_PASSWORD")  # May be None if no auth
+            "password": os.getenv("DRAGONFLY_PASSWORD"),  # May be None if no auth
         }
 
         logger.info(
             "credentials_loaded_from_environment",
-            postgres_host=postgres_creds['host'],
-            postgres_port=postgres_creds['port'],
-            postgres_database=postgres_creds['database'],
-            dragonfly_host=dragonfly_config['host'],
-            dragonfly_port=dragonfly_config['port'],
-            nats_url=os.getenv("NATS_URL", "nats://nats.nats.svc:4222")
+            postgres_host=postgres_creds["host"],
+            postgres_port=postgres_creds["port"],
+            postgres_database=postgres_creds["database"],
+            dragonfly_host=dragonfly_config["host"],
+            dragonfly_port=dragonfly_config["port"],
+            nats_url=os.getenv("NATS_URL", "nats://nats.nats.svc:4222"),
         )
 
         # Build PostgreSQL connection string with search_path
@@ -219,35 +214,34 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         )
         logger.info(
             "postgres_connection_string_built",
-            host=postgres_creds['host'],
-            port=postgres_creds['port'],
-            database=postgres_creds['database'],
-            schema=schema_name
+            host=postgres_creds["host"],
+            port=postgres_creds["port"],
+            database=postgres_creds["database"],
+            schema=schema_name,
         )
 
         # Initialize RedisClient (connects to Dragonfly)
         logger.info("initializing_redis_client")
-        redis_kwargs = {
-            "host": dragonfly_config['host'],
-            "port": dragonfly_config['port']
-        }
-        if dragonfly_config.get('password'):
-            redis_kwargs['password'] = dragonfly_config['password']
-        
-        _redis_client = RedisClient(**redis_kwargs)
+        redis_kwargs = {"host": dragonfly_config["host"], "port": dragonfly_config["port"]}
+        if dragonfly_config.get("password"):
+            redis_kwargs["password"] = dragonfly_config["password"]
+
+        redis_client = RedisClient(**redis_kwargs)
+        set_redis_client(redis_client)
         logger.info("redis_client_initialized")
 
         # Initialize ExecutionManager
         logger.info("initializing_execution_manager")
-        _execution_manager = ExecutionManager(
-            redis_client=_redis_client,
-            postgres_connection_string=postgres_connection_string
+        execution_manager = ExecutionManager(
+            redis_client=redis_client, postgres_connection_string=postgres_connection_string
         )
+        set_execution_manager(execution_manager)
         logger.info("execution_manager_initialized")
 
         # Initialize CloudEventEmitter
         logger.info("initializing_cloudevent_emitter")
-        _cloudevent_emitter = CloudEventEmitter()
+        cloudevent_emitter = CloudEventEmitter()
+        set_cloudevent_emitter(cloudevent_emitter)
         logger.info("cloudevent_emitter_initialized")
 
         # Validate LLM API keys are available as environment variables
@@ -267,24 +261,30 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # Initialize NATS consumer
         logger.info("initializing_nats_consumer")
         from services.nats_consumer import NATSConsumer
-        
-        _nats_consumer = NATSConsumer(
+
+        nats_consumer = NATSConsumer(
             nats_url=os.getenv("NATS_URL", "nats://nats.nats.svc:4222"),
             stream_name="AGENT_EXECUTION",
             consumer_group="agent-executor-workers",
-            execution_manager=_execution_manager,
-            cloudevent_emitter=_cloudevent_emitter
+            execution_manager=execution_manager,
+            cloudevent_emitter=cloudevent_emitter,
         )
-        
+        set_nats_consumer(nats_consumer)
+
         # Start NATS consumer as background task
         logger.info("starting_nats_consumer_background_task")
-        _nats_consumer_task = asyncio.create_task(_nats_consumer.start())
-        logger.info("nats_consumer_started")
+        nats_consumer_task = asyncio.create_task(nats_consumer.start())
+        
+        # Wait for NATS connection to be established
+        # This ensures the connection is available for tests and health checks
+        connection_ready = await nats_consumer.wait_for_connection(timeout=10.0)
+        if connection_ready:
+            logger.info("nats_consumer_started")
+        else:
+            logger.warning("nats_consumer_connection_timeout", message="NATS connection not established within timeout")
+            logger.info("nats_consumer_started")
 
-        logger.info(
-            "deepagents_runtime_service_started",
-            message="All services initialized successfully"
-        )
+        logger.info("deepagents_runtime_service_started", message="All services initialized successfully")
 
         # Yield control to the application
         yield
@@ -294,7 +294,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             "startup_failed",
             error=str(e),
             error_type=type(e).__name__,
-            stack_trace=traceback.format_exc()
+            stack_trace=traceback.format_exc(),
         )
         raise
 
@@ -303,25 +303,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("deepagents_runtime_service_shutting_down")
 
         # Stop NATS consumer
-        if _nats_consumer:
+        if nats_consumer:
             logger.info("stopping_nats_consumer")
-            await _nats_consumer.stop()
+            await nats_consumer.stop()
             logger.info("nats_consumer_stopped")
-        
-        if _nats_consumer_task and not _nats_consumer_task.done():
+
+        if nats_consumer_task and not nats_consumer_task.done():
             logger.info("cancelling_nats_consumer_task")
-            _nats_consumer_task.cancel()
+            nats_consumer_task.cancel()
             try:
-                await _nats_consumer_task
+                await nats_consumer_task
             except asyncio.CancelledError:
                 logger.info("nats_consumer_task_cancelled")
 
-        if _execution_manager:
-            _execution_manager.close()
+        if execution_manager:
+            execution_manager.close()
             logger.info("execution_manager_closed")
 
-        if _redis_client:
-            _redis_client.close()
+        if redis_client:
+            redis_client.close()
             logger.info("redis_client_closed")
 
         logger.info("deepagents_runtime_service_stopped")
@@ -332,7 +332,7 @@ app = FastAPI(
     title="Agent Executor Service",
     description="Event-Driven LangGraph Agent Execution Service with KEDA Autoscaling",
     version="0.1.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Set up OpenTelemetry instrumentation
@@ -340,498 +340,14 @@ if OTEL_AVAILABLE:
     FastAPIInstrumentor.instrument_app(app)
     logger.info("opentelemetry_instrumentation_enabled")
 
-
-# Dependency injection functions
-
-def get_redis_client() -> RedisClient:
-    """
-    Dependency injection for RedisClient.
-
-    Returns:
-        Initialized RedisClient instance
-
-    Raises:
-        HTTPException: If RedisClient is not initialized
-
-    References:
-        - Requirements: Req. 2.3
-        - Tasks: Task 8.2
-    """
-    if _redis_client is None:
-        logger.error("redis_client_not_initialized")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="RedisClient not initialized"
-        )
-    return _redis_client
-
-
-def get_execution_manager() -> ExecutionManager:
-    """
-    Dependency injection for ExecutionManager.
-
-    Returns:
-        Initialized ExecutionManager instance
-
-    Raises:
-        HTTPException: If ExecutionManager is not initialized
-
-    References:
-        - Requirements: Req. 3.2, 4.1
-        - Tasks: Task 8.2
-    """
-    if _execution_manager is None:
-        logger.error("execution_manager_not_initialized")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="ExecutionManager not initialized"
-        )
-    return _execution_manager
-
-
-def get_graph_builder(
-    execution_manager: ExecutionManager = Depends(get_execution_manager)
-) -> GraphBuilder:
-    """
-    Dependency injection for GraphBuilder.
-
-    Args:
-        execution_manager: ExecutionManager dependency (for accessing checkpointer)
-
-    Returns:
-        New GraphBuilder instance with checkpointer dependency
-
-    References:
-        - Requirements: Req. 3.1, 14.2
-        - Tasks: Task 1.1
-    """
-    # Pass the checkpointer from ExecutionManager to GraphBuilder
-    # This allows the graph to be compiled with checkpoint persistence
-    checkpointer = execution_manager.checkpointer if execution_manager else None
-    return GraphBuilder(checkpointer=checkpointer)
-
-
-def get_cloudevent_emitter() -> CloudEventEmitter:
-    """
-    Dependency injection for CloudEventEmitter.
-
-    Returns:
-        Initialized CloudEventEmitter instance
-
-    Raises:
-        HTTPException: If CloudEventEmitter is not initialized
-
-    References:
-        - Requirements: Req. 5.1, 5.3
-        - Tasks: Task 8.2
-    """
-    if _cloudevent_emitter is None:
-        logger.error("cloudevent_emitter_not_initialized")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="CloudEventEmitter not initialized"
-        )
-    return _cloudevent_emitter
-
-
-def get_nats_consumer():
-    """
-    Dependency injection for NATSConsumer.
-
-    Returns:
-        Initialized NATSConsumer instance
-
-    Raises:
-        HTTPException: If NATSConsumer is not initialized
-
-    References:
-        - Requirements: Req. 8.1
-        - Tasks: Task 1.3
-    """
-    if _nats_consumer is None:
-        logger.error("nats_consumer_not_initialized")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="NATSConsumer not initialized"
-        )
-    return _nats_consumer
-
-
-# Health check endpoint
-
-@app.get("/health", status_code=status.HTTP_200_OK)
-async def health_check() -> Dict[str, Any]:
-    """
-    Health check endpoint for Kubernetes liveness probes.
-
-    Simple liveness check that returns 200 OK if the service is running.
-    Does not check external dependencies.
-
-    Returns:
-        200 OK: Service is alive
-
-    Response format:
-        {
-            "status": "healthy"
-        }
-
-    References:
-        - Requirements: 17.1
-        - Design: Section 2.8 (Observability Design)
-        - Tasks: Task 1.6
-    """
-    return {"status": "healthy"}
-
-
-@app.get("/ready", status_code=status.HTTP_200_OK)
-async def readiness_check(
-    redis_client: RedisClient = Depends(get_redis_client),
-    execution_manager: ExecutionManager = Depends(get_execution_manager),
-    nats_consumer = Depends(get_nats_consumer)
-) -> Dict[str, Any]:
-    """
-    Readiness check endpoint for Kubernetes readiness probes.
-
-    Checks connectivity to all external dependencies:
-    - Dragonfly (Redis-compatible cache)
-    - PostgreSQL (via ExecutionManager)
-    - NATS (via NATSConsumer)
-
-    Returns:
-        200 OK: All services are ready
-        503 Service Unavailable: One or more services are unreachable
-
-    Response format:
-        {
-            "status": "ready" | "not_ready",
-            "services": {
-                "dragonfly": true | false,
-                "postgres": true | false,
-                "nats": true | false
-            }
-        }
-
-    References:
-        - Requirements: 17.2, 17.3
-        - Design: Section 2.8 (Observability Design)
-        - Tasks: Task 1.6
-    """
-    services_health = {
-        "dragonfly": False,
-        "postgres": False,
-        "nats": False
-    }
-
-    # Check Dragonfly
-    try:
-        services_health["dragonfly"] = redis_client.health_check()
-    except Exception as e:
-        logger.error("dragonfly_health_check_failed", error=str(e))
-        services_health["dragonfly"] = False
-
-    # Check PostgreSQL (via ExecutionManager)
-    try:
-        services_health["postgres"] = execution_manager.health_check()
-    except Exception as e:
-        logger.error("postgres_health_check_failed", error=str(e))
-        services_health["postgres"] = False
-
-    # Check NATS
-    try:
-        services_health["nats"] = nats_consumer.health_check()
-    except Exception as e:
-        logger.error("nats_health_check_failed", error=str(e))
-        services_health["nats"] = False
-
-    # Determine overall readiness status
-    all_ready = all(services_health.values())
-
-    if all_ready:
-        logger.info("readiness_check_passed", services=services_health)
-        return {
-            "status": "ready",
-            "services": services_health
-        }
-    else:
-        logger.warning("readiness_check_failed", services=services_health)
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={
-                "status": "not_ready",
-                "services": services_health
-            }
-        )
-
-
-# Prometheus metrics endpoint
-
-@app.get("/metrics")
-async def metrics() -> Response:
-    """
-    Prometheus metrics endpoint.
-
-    Exposes metrics in Prometheus text format for scraping by Prometheus server.
-    Metrics include job execution counts, durations, and infrastructure health indicators.
-
-    Returns:
-        Response with metrics in Prometheus text format
-
-    Metrics Exposed:
-        - deepagents_runtime_jobs_total{status="completed|failed"}: Total job count
-        - deepagents_runtime_job_duration_seconds: Histogram of job durations
-        - deepagents_runtime_db_connection_errors_total: Database error count
-        - deepagents_runtime_redis_publish_total{event_type="..."}: Redis publish count
-        - deepagents_runtime_redis_publish_errors_total: Redis error count
-        - deepagents_runtime_nats_messages_processed_total: NATS messages processed
-        - deepagents_runtime_nats_messages_failed_total: NATS messages failed
-
-    References:
-        - Tasks: Task 1.6, 9.3 (Prometheus metrics endpoint)
-        - Requirements: 17.4, 17.5, Observable pillar
-        - Design: Section 2.8 (Observability Design)
-    """
-    metrics_data, content_type = get_metrics()
-    return Response(content=metrics_data, media_type=content_type)
-
-
-# Main CloudEvent processing endpoint
-
-@app.post("/", status_code=status.HTTP_200_OK)
-async def process_cloudevent(
-    request: Request,
-    graph_builder: GraphBuilder = Depends(get_graph_builder),
-    execution_manager: ExecutionManager = Depends(get_execution_manager),
-    cloudevent_emitter: CloudEventEmitter = Depends(get_cloudevent_emitter)
-) -> Response:
-    """
-    Main endpoint for processing CloudEvents from NATS JetStream.
-
-    This endpoint:
-    1. Receives CloudEvent from NATS consumer (HTTP POST with CloudEvent headers)
-    2. Parses JobExecutionEvent from CloudEvent data field
-    3. Builds LangGraph agent from agent_definition
-    4. Executes agent with streaming to Dragonfly/Redis
-    5. Emits result CloudEvent (completed or failed) to NATS
-    6. Returns HTTP 200 OK to acknowledge processing
-
-    Request:
-        CloudEvent with type: dev.my-platform.agent.execute
-        Data payload: JobExecutionEvent (trace_id, job_id, agent_definition, input_payload)
-
-    Response:
-        200 OK: Job processed and result CloudEvent emitted
-        400 Bad Request: Malformed CloudEvent or JobExecutionEvent
-        503 Service Unavailable: Service dependencies not available
-
-    Error Handling:
-        - Malformed events: Return 400 (no retry)
-        - Execution failures: Emit job.failed CloudEvent, return 200
-        - Infrastructure failures: Return 503 (NATS will retry)
-
-    References:
-        - Requirements: Req. 1.1, 1.2, 1.3, 1.4, 3.1, 5.1, 5.3, 5.5
-        - Design: Section 3.1 (API Layer), Section 5 (Error Handling)
-        - Tasks: Task 8.4, 8.5, 8.6
-    """
-    try:
-        # Extract trace context from CloudEvent headers for distributed tracing
-        # W3C Trace Context propagation via traceparent/tracestate headers
-        if tracer and OTEL_AVAILABLE:
-            carrier = dict(request.headers)
-            ctx = TraceContextTextMapPropagator().extract(carrier=carrier)
-        else:
-            ctx = None
-
-        # Parse CloudEvent from request
-        # CloudEvent headers: ce-type, ce-source, ce-id, ce-specversion
-        # CloudEvent data: JSON body
-        request_body = await request.json()
-
-        logger.info(
-            "cloudevent_received",
-            ce_type=request.headers.get("ce-type"),
-            ce_source=request.headers.get("ce-source"),
-            ce_id=request.headers.get("ce-id")
-        )
-
-        # Extract JobExecutionEvent from CloudEvent data field
-        # CloudEvent structure: {"data": {...}, "specversion": "1.0", ...}
-        if "data" in request_body:
-            event_data = request_body["data"]
-        else:
-            # If no 'data' field, assume the body itself is the event data
-            event_data = request_body
-
-        # Validate and parse JobExecutionEvent using Pydantic
-        try:
-            job_event = JobExecutionEvent(**event_data)
-        except ValidationError as e:
-            logger.error(
-                "malformed_job_execution_event",
-                validation_errors=e.errors(),
-                event_data=event_data
-            )
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Malformed JobExecutionEvent: {e.errors()}"
-            )
-
-        # Extract fields from JobExecutionEvent
-        trace_id = job_event.trace_id
-        job_id = job_event.job_id
-        agent_definition = job_event.agent_definition
-        input_payload = job_event.input_payload
-
-        # Add trace_id and job_id to logging context
-        structlog.contextvars.bind_contextvars(
-            trace_id=trace_id,
-            job_id=job_id
-        )
-
-        logger.info(
-            "processing_job_execution_event",
-            trace_id=trace_id,
-            job_id=job_id,
-            has_agent_definition=bool(agent_definition),
-            has_input_payload=bool(input_payload)
-        )
-
-        # Track job execution start time for metrics
-        job_start_time = time.time()
-
-        # Orchestration logic: Build → Execute → Emit Result
-        try:
-            # Step 1: Build LangGraph agent from definition
-            if tracer:
-                with tracer.start_as_current_span("build_agent_graph", context=ctx) as span:
-                    span.set_attribute("job_id", job_id)
-                    span.set_attribute("trace_id", trace_id)
-                    span.set_attribute("agent.definition.id", agent_definition.get("id", "unknown"))
-                    logger.info("building_agent_from_definition", job_id=job_id, trace_id=trace_id)
-                    compiled_graph = graph_builder.build_from_definition(agent_definition)
-                    logger.info("agent_built_successfully", job_id=job_id, trace_id=trace_id)
-            else:
-                logger.info("building_agent_from_definition", job_id=job_id, trace_id=trace_id)
-                compiled_graph = graph_builder.build_from_definition(agent_definition)
-                logger.info("agent_built_successfully", job_id=job_id, trace_id=trace_id)
-
-            # Step 2: Execute agent with streaming
-            # Use execution strategy pattern for clean separation of concerns
-            from core.model_factory import ExecutionFactory
-            
-            execution_strategy = ExecutionFactory.create_strategy(execution_manager=execution_manager)
-            
-            def execute_with_strategy():
-                return execution_strategy.execute_workflow(
-                    graph_builder, agent_definition, job_id, trace_id
-                )
-            
-            if tracer:
-                with tracer.start_as_current_span("execute_agent", context=ctx) as span:
-                    span.set_attribute("job_id", job_id)
-                    span.set_attribute("trace_id", trace_id)
-                    span.set_attribute("thread_id", job_id)
-                    logger.info("executing_agent", job_id=job_id, trace_id=trace_id)
-                    result = execute_with_strategy()
-                    logger.info("agent_execution_completed", job_id=job_id, trace_id=trace_id, has_result=bool(result))
-            else:
-                logger.info("executing_agent", job_id=job_id, trace_id=trace_id)
-                result = execute_with_strategy()
-                logger.info("agent_execution_completed", job_id=job_id, trace_id=trace_id, has_result=bool(result))
-
-            # Step 3: Emit job.completed CloudEvent
-            logger.info("emitting_completed_event", job_id=job_id, trace_id=trace_id)
-            await cloudevent_emitter.emit_completed(
-                job_id=job_id,
-                result=result,
-                trace_id=trace_id
-            )
-            logger.info("completed_event_emitted", job_id=job_id, trace_id=trace_id)
-
-            # Record metrics for successful job completion
-            job_duration = time.time() - job_start_time
-            deepagents_runtime_jobs_total.labels(status='completed').inc()
-            deepagents_runtime_job_duration_seconds.observe(job_duration)
-
-            logger.info(
-                "job_metrics_recorded",
-                job_id=job_id,
-                trace_id=trace_id,
-                status="completed",
-                duration_seconds=job_duration
-            )
-
-            # Return HTTP 200 OK to acknowledge successful processing
-            return Response(status_code=status.HTTP_200_OK)
-
-        except Exception as e:
-            # Execution failure: Emit job.failed CloudEvent
-            logger.error(
-                "agent_execution_failed",
-                job_id=job_id,
-                trace_id=trace_id,
-                error=str(e),
-                error_type=type(e).__name__,
-                stack_trace=traceback.format_exc()
-            )
-
-            # Construct structured error payload
-            error_payload = {
-                "message": str(e),
-                "type": type(e).__name__,
-                "stack_trace": traceback.format_exc()
-            }
-
-            # Emit job.failed CloudEvent
-            logger.info("emitting_failed_event", job_id=job_id, trace_id=trace_id)
-            await cloudevent_emitter.emit_failed(
-                job_id=job_id,
-                error=error_payload,
-                trace_id=trace_id
-            )
-            logger.info("failed_event_emitted", job_id=job_id, trace_id=trace_id)
-
-            # Record metrics for failed job
-            job_duration = time.time() - job_start_time
-            deepagents_runtime_jobs_total.labels(status='failed').inc()
-            deepagents_runtime_job_duration_seconds.observe(job_duration)
-
-            logger.info(
-                "job_metrics_recorded",
-                job_id=job_id,
-                trace_id=trace_id,
-                status="failed",
-                duration_seconds=job_duration
-            )
-
-            # Return HTTP 200 OK (failure was handled by emitting failed event)
-            # This prevents NATS from retrying the job
-            return Response(status_code=status.HTTP_200_OK)
-
-    except HTTPException:
-        # Re-raise HTTPException (400 Bad Request for malformed events)
-        raise
-
-    except Exception as e:
-        # Unexpected error: Log and return 503 for NATS retry
-        logger.error(
-            "unexpected_error_processing_cloudevent",
-            error=str(e),
-            error_type=type(e).__name__,
-            stack_trace=traceback.format_exc()
-        )
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Unexpected error: {str(e)}"
-        )
-
-    finally:
-        # Clear logging context
-        structlog.contextvars.clear_contextvars()
+# Include routers
+app.include_router(health.router)
+app.include_router(metrics.router)
+app.include_router(cloudevents.router)
+app.include_router(deepagents.router)
 
 
 # Application entry point for uvicorn
-
 def main() -> None:
     """
     Entry point for running the application with uvicorn.
@@ -842,12 +358,8 @@ def main() -> None:
         uvicorn deepagents_runtime.api.main:app --host 0.0.0.0 --port 8080
     """
     import uvicorn
-    uvicorn.run(
-        "deepagents_runtime.api.main:app",
-        host="0.0.0.0",
-        port=8080,
-        log_level="info"
-    )
+
+    uvicorn.run("deepagents_runtime.api.main:app", host="0.0.0.0", port=8080, log_level="info")
 
 
 if __name__ == "__main__":

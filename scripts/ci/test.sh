@@ -67,9 +67,9 @@ if [[ "${TEST_DIR}" == *"integration"* ]]; then
     NAMESPACE="intelligence-deepagents"
     
     # Get database credentials from K8s secret
-    DB_USER=$(kubectl get secret -n $NAMESPACE deepagents-runtime-db-app -o jsonpath='{.data.username}' | base64 -d)
-    DB_PASS=$(kubectl get secret -n $NAMESPACE deepagents-runtime-db-app -o jsonpath='{.data.password}' | base64 -d)
-    DB_NAME=$(kubectl get secret -n $NAMESPACE deepagents-runtime-db-app -o jsonpath='{.data.dbname}' | base64 -d 2>/dev/null || echo "deepagents-runtime-db")
+    DB_USER=$(kubectl get secret -n $NAMESPACE deepagents-runtime-db-conn -o jsonpath='{.data.POSTGRES_USER}' | base64 -d)
+    DB_PASS=$(kubectl get secret -n $NAMESPACE deepagents-runtime-db-conn -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d)
+    DB_NAME=$(kubectl get secret -n $NAMESPACE deepagents-runtime-db-conn -o jsonpath='{.data.POSTGRES_DB}' | base64 -d)
     
     # Get Dragonfly password from K8s secret
     REDIS_PASS=$(kubectl get secret -n $NAMESPACE deepagents-runtime-cache-conn -o jsonpath='{.data.DRAGONFLY_PASSWORD}' | base64 -d)

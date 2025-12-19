@@ -16,10 +16,22 @@ spec:
         - /bin/sh
         - -c
         - |
-          # Create stream
+          # Create stream for input messages
           nats stream add AGENT_EXECUTION \
             --server=nats://nats.nats.svc:4222 \
             --subjects "agent.execute.*" \
+            --retention limits \
+            --max-msgs=-1 \
+            --max-age=24h \
+            --storage file \
+            --replicas 1 \
+            --discard old \
+            --defaults || true
+          
+          # Create stream for output/status messages
+          nats stream add AGENT_STATUS \
+            --server=nats://nats.nats.svc:4222 \
+            --subjects "agent.status.*" \
             --retention limits \
             --max-msgs=-1 \
             --max-age=24h \

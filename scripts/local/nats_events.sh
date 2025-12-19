@@ -99,6 +99,13 @@ cleanup() {
         ./scripts/bootstrap/cleanup-preview.sh || log_warning "Platform cleanup failed"
     fi
     
+    # Clean up fresh platform directory
+    FRESH_PLATFORM_DIR="$WORKSPACE_ROOT/zerotouch-platform-fresh"
+    if [ -d "$FRESH_PLATFORM_DIR" ]; then
+        log_info "Removing fresh platform directory..."
+        rm -rf "$FRESH_PLATFORM_DIR"
+    fi
+    
     cd "$REPO_ROOT"
     log_info "Log file saved at: $LOG_FILE"
     exit $exit_code
@@ -156,12 +163,35 @@ log_success "Prerequisites validated"
 # Step 3: Create artifacts directory
 mkdir -p "$ARTIFACTS_DIR"
 
-# Step 4: Use existing zerotouch-platform (skip git operations)
-log_info "Using existing zerotouch-platform at: $PLATFORM_DIR"
-if [ "$PLATFORM_BRANCH" != "main" ]; then
-    log_info "Note: Platform branch specified as '$PLATFORM_BRANCH' but using existing checkout"
+# Step 4: Create fresh platform directory (like CI does)
+log_info "Creating fresh platform directory for clean Git state..."
+
+# Create a temporary directory for the fresh platform checkout
+FRESH_PLATFORM_DIR="$WORKSPACE_ROOT/zerotouch-platform-fresh"
+
+# Remove existing fresh directory if it exists
+if [ -d "$FRESH_PLATFORM_DIR" ]; then
+    log_info "Removing existing fresh platform directory..."
+    rm -rf "$FRESH_PLATFORM_DIR"
 fi
-log_success "Platform directory validated"
+
+# Clone the platform repository to get a clean Git state
+log_info "Cloning platform repository for clean Git state..."
+git clone "$PLATFORM_DIR" "$FRESH_PLATFORM_DIR"
+
+# Switch to the specified branch
+cd "$FRESH_PLATFORM_DIR"
+if [ "$PLATFORM_BRANCH" != "main" ]; then
+    log_info "Switching to branch: $PLATFORM_BRANCH"
+    git checkout "$PLATFORM_BRANCH" || {
+        log_warning "Branch $PLATFORM_BRANCH not found, staying on current branch"
+    }
+fi
+
+# Update PLATFORM_DIR to point to the fresh directory
+PLATFORM_DIR="$FRESH_PLATFORM_DIR"
+
+log_success "Fresh platform directory created at: $PLATFORM_DIR"
 
 # Step 5: Export AWS credentials as environment variables (if provided)
 if [ -n "${AWS_ACCESS_KEY_ID:-}" ]; then
