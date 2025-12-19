@@ -82,26 +82,21 @@ if [[ "${TEST_DIR}" == *"integration"* ]]; then
         local remote_port=$4
         local name=$5
         
-        # Create log file for this port-forward (sanitize name for filesystem)
-        local name_lower=$(echo "$name" | tr '[:upper:]' '[:lower:]' | tr '/' '-')
-        local pf_log="${ARTIFACTS_DIR}/port-forward-${name_lower}-${local_port}.log"
-        
-        # All logging goes to stderr so only PID goes to stdout
-        log_info "Starting port-forward for $name ($local_port -> $remote_port)..." >&2
+        log_info "Starting port-forward for $name ($local_port -> $remote_port)..."
         
         # Kill any existing process on the port
         local existing_pids=$(lsof -ti:$local_port 2>/dev/null || true)
         if [ ! -z "$existing_pids" ]; then
-            log_info "  Killing existing processes on port $local_port: $existing_pids" >&2
+            log_info "  Killing existing processes on port $local_port: $existing_pids"
             echo "$existing_pids" | xargs kill -9 2>/dev/null || true
         fi
         sleep 1
         
         # Check if service exists and is ready
         local service_name=${service#svc/}  # Remove svc/ prefix if present
-        log_info "  Checking service availability: $service_name in namespace $namespace" >&2
+        log_info "  Checking service availability: $service_name in namespace $namespace"
         if ! kubectl get service -n $namespace $service_name >/dev/null 2>&1; then
-            log_error "  Service $service_name not found in namespace $namespace" >&2
+            log_error "  Service $service_name not found in namespace $namespace"
             return 1
         fi
         
@@ -110,40 +105,31 @@ if [[ "${TEST_DIR}" == *"integration"* ]]; then
         local attempt=1
         
         while [ $attempt -le $max_attempts ]; do
-            log_info "  Attempt $attempt/$max_attempts for $name..." >&2
+            log_info "  Attempt $attempt/$max_attempts for $name..."
             
-            # Start port-forward with detailed logging
-            kubectl port-forward -n $namespace $service $local_port:$remote_port > "$pf_log" 2>&1 &
+            # Start port-forward
+            kubectl port-forward -n $namespace $service $local_port:$remote_port >/dev/null 2>&1 &
             local pid=$!
             
-            log_info "  Started kubectl port-forward (PID: $pid), logs: $pf_log" >&2
+            log_info "  Started kubectl port-forward (PID: $pid)"
             
             # Wait and test the connection
             sleep 5
             
             # Check if process is still running
             if ! kill -0 $pid 2>/dev/null; then
-                log_error "  Port-forward process $pid died immediately" >&2
-                log_error "  Last 10 lines of port-forward log:" >&2
-                tail -10 "$pf_log" 2>/dev/null >&2 || echo "    No log content available" >&2
+                log_error "  Port-forward process $pid died immediately"
                 ((attempt++))
                 continue
             fi
             
             # Test connection
             if nc -z localhost $local_port 2>/dev/null; then
-                log_info "  ✅ $name port-forward successful (PID: $pid)" >&2
-                
-                # Store PID for later monitoring
-                echo "$pid" > "${ARTIFACTS_DIR}/port-forward-${name_lower}-${local_port}.pid"
-                
-                # Return only the PID to stdout
+                log_info "  ✅ $name port-forward successful (PID: $pid)"
                 echo $pid
                 return 0
             else
-                log_error "  ❌ $name port-forward connection test failed" >&2
-                log_error "  Port-forward log content:" >&2
-                cat "$pf_log" 2>/dev/null >&2 || echo "    No log content available" >&2
+                log_error "  ❌ $name port-forward connection test failed"
                 kill $pid 2>/dev/null || true
                 sleep 2
             fi
@@ -151,7 +137,7 @@ if [[ "${TEST_DIR}" == *"integration"* ]]; then
             ((attempt++))
         done
         
-        log_error "Failed to establish $name port-forward after $max_attempts attempts" >&2
+        log_error "Failed to establish $name port-forward after $max_attempts attempts"
         return 1
     }
     
