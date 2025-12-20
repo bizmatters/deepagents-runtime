@@ -8,7 +8,7 @@ name: Quality Gate
 on:
   # Trigger after both test workflows complete
   workflow_run:
-    workflows: ["Spec Generation Tests", "NATS Events Integration Tests"]
+    workflows: ["Spec Generation Tests (In-Cluster)", "NATS Events Integration Tests"]
     types: [completed]
     branches: [main]
   # Allow manual trigger for testing
