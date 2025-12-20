@@ -217,13 +217,46 @@ jobs:
               -e "s/{{USE_MOCK_LLM}}/${USE_MOCK_LLM}/g" \
               -e "s/{{USE_REAL_LLM}}/${USE_REAL_LLM}/g" \
               -e "s/{{MOCK_TIMEOUT}}/${MOCK_TIMEOUT}/g" \
-              -e "s/{{OPENAI_API_KEY}}/${OPENAI_API_KEY:-mock-key-for-testing}/g" \
-              -e "s/{{ANTHROPIC_API_KEY}}/${ANTHROPIC_API_KEY:-mock-key-for-testing}/g" \
-              scripts/ci/test-job-template.yaml > /tmp/test-job.yaml
+              scripts/ci/test-job-template.yaml > /tmp/test-job-base.yaml
+          
+          # Set API keys based on mock mode
+          if [ "${USE_MOCK_LLM}" = "true" ]; then
+            sed -e "s/{{OPENAI_API_KEY}}/mock-key-for-testing/g" \
+                -e "s/{{ANTHROPIC_API_KEY}}/mock-key-for-testing/g" \
+                /tmp/test-job-base.yaml > /tmp/test-job.yaml
+          else
+            sed -e "s/{{OPENAI_API_KEY}}/${OPENAI_API_KEY}/g" \
+                -e "s/{{ANTHROPIC_API_KEY}}/${ANTHROPIC_API_KEY}/g" \
+                /tmp/test-job-base.yaml > /tmp/test-job.yaml
+          fi
           
           # Apply job and wait for completion
           kubectl apply -f /tmp/test-job.yaml
           kubectl wait --for=condition=complete --timeout=${{ inputs.timeout }}s job/$JOB_NAME -n ${{ inputs.namespace }}
+          
+          # Check if job succeeded or failed
+          JOB_STATUS=$(kubectl get job $JOB_NAME -n ${{ inputs.namespace }} -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}' 2>/dev/null || echo "Unknown")
+          JOB_FAILED=$(kubectl get job $JOB_NAME -n ${{ inputs.namespace }} -o jsonpath='{.status.conditions[?(@.type=="Failed")].status}' 2>/dev/null || echo "False")
+          
+          echo "Job completion status: $JOB_STATUS"
+          echo "Job failed status: $JOB_FAILED"
+          
+          if [ "$JOB_FAILED" = "True" ]; then
+            echo "❌ Test job failed!"
+            # Get pod logs for debugging
+            POD_NAME=$(kubectl get pods -n ${{ inputs.namespace }} -l job-name=$JOB_NAME -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+            if [ -n "$POD_NAME" ]; then
+              echo "=== Failed Test Logs ==="
+              kubectl logs $POD_NAME -n ${{ inputs.namespace }} || echo "Could not retrieve logs"
+            fi
+            exit 1
+          elif [ "$JOB_STATUS" != "True" ]; then
+            echo "❌ Test job did not complete successfully!"
+            echo "Job status: Complete=$JOB_STATUS, Failed=$JOB_FAILED"
+            exit 1
+          fi
+          
+          echo "✅ Test job completed successfully"
           
           # Copy artifacts
           POD_NAME=$(kubectl get pods -n ${{ inputs.namespace }} -l job-name=$JOB_NAME -o jsonpath='{.items[0].metadata.name}')
@@ -256,6 +289,32 @@ jobs:
             echo "tests=0" >> $GITHUB_OUTPUT
             echo "failures=0" >> $GITHUB_OUTPUT
             echo "errors=0" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Validate test results
+        if: always()
+        run: |
+          if [ -f artifacts/test-results.xml ]; then
+            TESTS=$(grep -oP 'tests="\K[0-9]+' artifacts/test-results.xml | head -1 || echo "0")
+            FAILURES=$(grep -oP 'failures="\K[0-9]+' artifacts/test-results.xml | head -1 || echo "0")
+            ERRORS=$(grep -oP 'errors="\K[0-9]+' artifacts/test-results.xml | head -1 || echo "0")
+            
+            echo "Test Results Summary:"
+            echo "  Total Tests: ${TESTS}"
+            echo "  Failures: ${FAILURES}"
+            echo "  Errors: ${ERRORS}"
+            
+            if [ "${FAILURES}" != "0" ] || [ "${ERRORS}" != "0" ]; then
+              echo "❌ Tests failed! Failures: ${FAILURES}, Errors: ${ERRORS}"
+              exit 1
+            else
+              echo "✅ All tests passed!"
+            fi
+          else
+            echo "⚠️ No test results found - this may indicate a test execution failure"
+            echo "Checking if this was expected..."
+            # If we got here, the job completed but no results - this is likely a failure
+            exit 1
           fi
       
       - name: Comment PR with test results
