@@ -11,14 +11,7 @@ on:
       - 'scripts/ci/**'
       - 'tests/integration/test_nats_events_integration.py'
   pull_request:
-    branches: [main]
-    paths:
-      - '**/*.py'
-      - 'Dockerfile'
-      - 'pyproject.toml'
-      - '.github/workflows/nats_events.yml'
-      - 'scripts/ci/**'
-      - 'tests/integration/test_nats_events_integration.py'
+    branches: [main, develop, master]
   workflow_dispatch:
 
 permissions:
@@ -37,3 +30,4 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}

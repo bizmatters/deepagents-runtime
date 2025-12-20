@@ -38,42 +38,13 @@ permissions:
   pull-requests: write
 
 jobs:
-  spec-generation-tests-mock:
-    if: github.event_name == 'pull_request'
+  spec-generation-tests:
     uses: ./.github/workflows/in-cluster-test.yml
     with:
       test-path: "tests/integration/test_agent_generation_workflow.py::test_agent_generation_end_to_end_success"
-      test-name: "spec-generation-mock"
-      timeout: 300  # 5 minutes for mock tests
-      use-real-llm: false
-    secrets:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
-      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
-
-  spec-generation-tests-real:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: ./.github/workflows/in-cluster-test.yml
-    with:
-      test-path: "tests/integration/test_agent_generation_workflow.py::test_agent_generation_end_to_end_success"
-      test-name: "spec-generation-real"
-      timeout: 900  # 15 minutes for real LLM tests
-      use-real-llm: true
-    secrets:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
-      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
-
-  spec-generation-tests-manual:
-    if: github.event_name == 'workflow_dispatch'
-    uses: ./.github/workflows/in-cluster-test.yml
-    with:
-      test-path: "tests/integration/test_agent_generation_workflow.py::test_agent_generation_end_to_end_success"
-      test-name: "spec-generation-manual"
-      timeout: ${{ inputs.use_real_llm && 900 || 300 }}  # 15 min for real LLM, 5 min for mock
-      use-real-llm: ${{ inputs.use_real_llm || false }}
+      test-name: "spec-generation"
+      timeout: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') && 900 || 300 }}  # 15 min for main, 5 min for others
+      use-real-llm: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}  # Real LLM only on main branch
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
