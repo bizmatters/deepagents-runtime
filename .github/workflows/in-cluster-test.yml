@@ -420,43 +420,6 @@ jobs:
           
           echo ""
           echo "✅ Test job completed successfully"
-          
-          # Copy artifacts with better error handling
-          echo ""
-          echo "=== COPYING TEST ARTIFACTS ==="
-          mkdir -p artifacts
-          
-          # Try to copy artifacts from the completed pod
-          if kubectl cp ${{ inputs.namespace }}/$POD_NAME:/app/artifacts/ ./artifacts/ 2>/dev/null; then
-            echo "✅ Successfully copied artifacts from pod"
-            ls -la artifacts/ || echo "No artifacts directory created"
-          else
-            echo "⚠️  Could not copy artifacts using kubectl cp (pod may have terminated)"
-            echo "This is expected for completed jobs - checking if artifacts were generated..."
-            
-            # Alternative: Check if pod has artifacts volume and try different approach
-            echo ""
-            echo "=== POD VOLUME INFORMATION ==="
-            kubectl describe pod $POD_NAME -n ${{ inputs.namespace }} | grep -A 10 -B 5 "artifacts" || echo "No artifacts volume info found"
-            
-            # Try to get container exit code for more info
-            echo ""
-            echo "=== CONTAINER EXIT STATUS ==="
-            kubectl get pod $POD_NAME -n ${{ inputs.namespace }} -o jsonpath='{.status.containerStatuses[0].state.terminated}' | jq '.' 2>/dev/null || echo "Container status not available"
-            
-            echo ""
-            echo "ℹ️  Artifact copy failed - this is normal for completed jobs"
-            echo "   The tests ran successfully but the pod container terminated after completion"
-            echo "   This is expected Kubernetes behavior for completed Job pods"
-            echo ""
-            echo "📋 To verify test execution manually:"
-            echo "   kubectl logs $POD_NAME -n ${{ inputs.namespace }}"
-            
-            # Create a minimal artifacts directory to avoid upload warnings
-            mkdir -p artifacts
-            echo "Test completed successfully but artifacts could not be copied from terminated pod" > artifacts/README.txt
-            echo "Check the job logs above for detailed test results" >> artifacts/README.txt
-          fi
       
       - name: Comment PR with test results
         if: always() && github.event_name == 'pull_request'
