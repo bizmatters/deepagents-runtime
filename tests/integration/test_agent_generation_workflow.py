@@ -453,7 +453,7 @@ async def test_agent_generation_end_to_end_success(
             # Wait for event capture to complete
             # Mock mode: fast execution (15s), Real LLM: longer execution (2 minutes)
             print(f"\n[DEBUG] ===== EVENT CAPTURE MONITORING =====")
-            max_wait = 15 if is_mock_mode() else 120
+            max_wait = 15 if is_mock_mode() else 300
             wait_interval = 1 if is_mock_mode() else 30
             
             # Get expected event count for mock mode validation
