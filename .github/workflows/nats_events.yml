@@ -2,7 +2,7 @@ name: NATS Events Integration Tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/integration-tests-ci]
     paths:
       - '**/*.py'
       - 'Dockerfile'
@@ -11,7 +11,7 @@ on:
       - 'scripts/ci/**'
       - 'tests/integration/test_nats_events_integration.py'
   pull_request:
-    branches: [main]
+    branches: [main, feature/integration-tests-ci]
     paths:
       - '**/*.py'
       - 'Dockerfile'

@@ -2,7 +2,7 @@ name: Spec Generation Tests (In-Cluster)
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/integration-tests-ci]
     paths:
       - '**/*.py'
       - '**/*.yml'
@@ -14,7 +14,7 @@ on:
       - 'tests/integration/test_agent_generation_workflow.py'
       - 'scripts/ci/**'
   pull_request:
-    branches: [main]
+    branches: [main, feature/integration-tests-ci]
     paths:
       - '**/*.py'
       - '**/*.yml'
