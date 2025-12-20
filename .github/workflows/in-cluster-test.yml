@@ -99,7 +99,7 @@ jobs:
       - name: Set up Kind cluster
         uses: helm/kind-action@v1
         with:
-          cluster_name: zerotouch-preview
+          cluster_name: zerotouch-previeww
       
       - name: Load Docker image into Kind
         run: |
