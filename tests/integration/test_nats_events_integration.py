@@ -135,31 +135,19 @@ class TestNATSEventsIntegration:
             assert nc is not None, "NATS server is not available - please start NATS infrastructure"
             assert js is not None, "NATS JetStream is not available - please start NATS infrastructure"
             
-            # Create test stream if not exists
-            test_stream = "TEST_AGENT_EXECUTION"
-            test_subject = "agent.execute.test"
+            # Create test stream with unique name and subjects to avoid any conflicts
+            test_stream = f"TEST_STREAM_{uuid.uuid4().hex}"
+            test_subject = f"test.{uuid.uuid4().hex}"
             
-            # Delete stream if it exists to start fresh
-            try:
-                await js.delete_stream(test_stream)
-                print(f"   🧹 Deleted existing test stream: {test_stream}")
-            except Exception:
-                # Stream might not exist
-                pass
-            
-            # Create fresh test stream
-            try:
-                await js.add_stream(
-                    name=test_stream,
-                    subjects=[f"{test_subject}.*"],
-                    retention="limits",
-                    max_msgs=100,
-                    max_age=3600  # 1 hour
-                )
-                print(f"   ✅ Created test stream: {test_stream}")
-            except Exception as e:
-                print(f"   ⚠️ Failed to create test stream: {e}")
-                raise
+            # Create fresh test stream with completely unique subjects
+            await js.add_stream(
+                name=test_stream,
+                subjects=[f"{test_subject}.*"],
+                retention="limits",
+                max_msgs=10,
+                max_age=60  # 1 minute - quick cleanup
+            )
+            print(f"   ✅ Created isolated test stream: {test_stream}")
             
             # Create consumer
             consumer_name = f"test-consumer-{uuid.uuid4().hex[:8]}"
@@ -192,10 +180,11 @@ class TestNATSEventsIntegration:
             await msgs[0].ack()
             print("   📥 Received and acknowledged message")
             
-            # Cleanup
+            # Cleanup - delete the test stream
             try:
                 await js.delete_consumer(test_stream, consumer_name)
                 await js.delete_stream(test_stream)
+                print(f"   🧹 Cleaned up test stream: {test_stream}")
             except Exception:
                 pass
 
