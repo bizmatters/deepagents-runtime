@@ -139,6 +139,15 @@ class TestNATSEventsIntegration:
             test_stream = "TEST_AGENT_EXECUTION"
             test_subject = "agent.execute.test"
             
+            # Delete stream if it exists to start fresh
+            try:
+                await js.delete_stream(test_stream)
+                print(f"   🧹 Deleted existing test stream: {test_stream}")
+            except Exception:
+                # Stream might not exist
+                pass
+            
+            # Create fresh test stream
             try:
                 await js.add_stream(
                     name=test_stream,
@@ -147,9 +156,10 @@ class TestNATSEventsIntegration:
                     max_msgs=100,
                     max_age=3600  # 1 hour
                 )
-            except Exception:
-                # Stream might already exist
-                pass
+                print(f"   ✅ Created test stream: {test_stream}")
+            except Exception as e:
+                print(f"   ⚠️ Failed to create test stream: {e}")
+                raise
             
             # Create consumer
             consumer_name = f"test-consumer-{uuid.uuid4().hex[:8]}"

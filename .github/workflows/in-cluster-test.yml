@@ -99,8 +99,10 @@ jobs:
       
       - name: Bootstrap platform
         run: |
-          # Use the existing bootstrap script
-          ./scripts/local/ci/bootstrap-platform.sh
+          # Bootstrap the platform using the existing zerotouch-platform
+          cd ../zerotouch-platform
+          chmod +x scripts/bootstrap/01-master-bootstrap.sh
+          ./scripts/bootstrap/01-master-bootstrap.sh --mode preview
       
       - name: Deploy service
         env:
@@ -123,6 +125,17 @@ jobs:
         run: |
           # Make the centralized test script executable
           chmod +x scripts/ci/in-cluster-test.sh
+          
+          # Set LLM mode based on input
+          if [ "$USE_REAL_LLM" = "true" ]; then
+            export USE_MOCK_LLM="false"
+            export REAL_TIMEOUT="480"
+            echo "Using real LLM APIs for testing"
+          else
+            export USE_MOCK_LLM="true"
+            export MOCK_TIMEOUT="60"
+            echo "Using mock LLM for testing"
+          fi
           
           # Run the tests
           ./scripts/ci/in-cluster-test.sh "$TEST_PATH" "$TEST_NAME" "$TIMEOUT"
@@ -196,5 +209,17 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
+          # Get logs from failed pods for debugging
+          if kubectl get pods -n ${{ inputs.namespace }} -l test-suite=${{ inputs.test-name }} --field-selector=status.phase=Failed -o name | grep -q .; then
+            echo "=== Failed Pod Logs ==="
+            kubectl get pods -n ${{ inputs.namespace }} -l test-suite=${{ inputs.test-name }} --field-selector=status.phase=Failed -o name | while read pod; do
+              echo "--- Logs for $pod ---"
+              kubectl logs $pod -n ${{ inputs.namespace }} || true
+            done
+          fi
+          
+          # Clean up test jobs
+          kubectl delete jobs -n ${{ inputs.namespace }} -l test-suite=${{ inputs.test-name }} --ignore-not-found=true
+          
           # Clean up the Kind cluster
           kind delete cluster --name zerotouch-preview || true

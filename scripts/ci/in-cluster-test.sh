@@ -125,12 +125,16 @@ spec:
           value: "nats://nats.nats.svc:4222"
         # Test configuration
         - name: USE_MOCK_LLM
-          value: "true"
+          value: "${USE_MOCK_LLM:-true}"
         - name: MOCK_TIMEOUT
-          value: "60"
-        # OpenAI API key (for mock mode, can be dummy)
+          value: "${MOCK_TIMEOUT:-60}"
+        - name: REAL_TIMEOUT
+          value: "${REAL_TIMEOUT:-480}"
+        # LLM API keys
         - name: OPENAI_API_KEY
-          value: "mock-key-for-testing"
+          value: "${OPENAI_API_KEY:-mock-key-for-testing}"
+        - name: ANTHROPIC_API_KEY
+          value: "${ANTHROPIC_API_KEY:-mock-key-for-testing}"
         command: 
         - "/bin/bash"
         - "-c"
@@ -138,6 +142,41 @@ spec:
           echo "Starting in-cluster integration tests..."
           echo "Test Path: $TEST_PATH"
           echo "Python version: \$(python --version)"
+          
+          # Install required packages for database operations and health checks
+          echo "Installing required packages..."
+          apt-get update -qq && apt-get install -y -qq postgresql-client curl
+          
+          # Run database migrations first
+          echo "Running database migrations..."
+          export POSTGRES_HOST=deepagents-runtime-db-rw
+          export POSTGRES_PORT=5432
+          export POSTGRES_SCHEMA=public
+          export MIGRATION_DIR=./migrations
+          
+          # Wait for database to be ready
+          echo "Waiting for database to be ready..."
+          until pg_isready -h \$POSTGRES_HOST -p \$POSTGRES_PORT -U \$POSTGRES_USER; do 
+            echo "Database not ready, waiting..."
+            sleep 2
+          done
+          echo "Database is ready"
+          
+          # Run migrations
+          chmod +x scripts/ci/run-migrations.sh
+          ./scripts/ci/run-migrations.sh
+          echo "Database migrations completed"
+          
+          # Start FastAPI application in background
+          echo "Starting FastAPI application..."
+          python -m uvicorn api.main:app --host 0.0.0.0 --port 8000 &
+          APP_PID=\$!
+          
+          # Wait for app to start
+          echo "Waiting for FastAPI to be ready..."
+          timeout 60 bash -c 'until curl -f http://localhost:8000/health; do sleep 2; done'
+          echo "FastAPI application started successfully"
+          
           echo "Checking installed packages..."
           pip list | grep -E "(pytest|deepagents)"
           echo "Running tests..."
@@ -149,13 +188,18 @@ spec:
             --cov=. \\
             --cov-report=xml:artifacts/coverage.xml \\
             --cov-report=html:artifacts/htmlcov
+          
+          # Stop FastAPI application
+          if [ ! -z "\$APP_PID" ]; then
+            kill \$APP_PID || true
+          fi
         resources:
           requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
             memory: "512Mi"
             cpu: "250m"
-          limits:
-            memory: "1Gi"
-            cpu: "500m"
         volumeMounts:
         - name: artifacts
           mountPath: /app/artifacts
@@ -260,6 +304,25 @@ get_test_results() {
         kubectl logs "$pod_name" -n "$NAMESPACE" | tail -50
     fi
 }
+
+# Enhanced error handling
+error_handler() {
+    local exit_code=$?
+    local line_number=$1
+    log_error "Script failed at line $line_number with exit code $exit_code"
+    log_error "Last command: $BASH_COMMAND"
+    
+    # Get pod logs for debugging
+    local pod_name=$(kubectl get pods -n "$NAMESPACE" -l job-name="$JOB_NAME" -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null || echo "")
+    if [[ -n "$pod_name" ]]; then
+        log_error "Pod logs for debugging:"
+        kubectl logs "$pod_name" -n "$NAMESPACE" --tail=50 2>/dev/null || true
+    fi
+    
+    return $exit_code
+}
+
+trap 'error_handler $LINENO' ERR
 
 # Cleanup function
 cleanup() {
