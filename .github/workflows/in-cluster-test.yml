@@ -153,11 +153,24 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           BOT_GITHUB_USERNAME: ${{ secrets.BOT_GITHUB_USERNAME }}
           BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
+          TENANTS_REPO_NAME: ${{ secrets.TENANTS_REPO_NAME }}
         run: |
           # Bootstrap the platform using the existing zerotouch-platform
           cd zerotouch-platform
           chmod +x scripts/bootstrap/01-master-bootstrap.sh
           ./scripts/bootstrap/01-master-bootstrap.sh --mode preview
+      
+      - name: Apply preview patches
+        run: |
+          # Apply preview environment patches for resource optimization
+          chmod +x scripts/patches/00-apply-all-patches.sh
+          ./scripts/patches/00-apply-all-patches.sh --force
+      
+      - name: Run pre-deploy diagnostics
+        run: |
+          # Run pre-deployment diagnostics
+          chmod +x scripts/ci/pre-deploy-diagnostics.sh
+          ./scripts/ci/pre-deploy-diagnostics.sh
       
       - name: Deploy service
         env:
@@ -167,6 +180,14 @@ jobs:
           # Deploy the service using existing scripts
           ./scripts/ci/deploy.sh
       
+      - name: Run post-deploy diagnostics
+        env:
+          NAMESPACE: ${{ inputs.namespace }}
+        run: |
+          # Run post-deployment diagnostics
+          chmod +x scripts/ci/post-deploy-diagnostics.sh
+          ./scripts/ci/post-deploy-diagnostics.sh ${{ inputs.namespace }} deepagents-runtime
+      
       - name: Run in-cluster tests
         env:
           TEST_PATH: ${{ inputs.test-path }}
@@ -174,6 +195,9 @@ jobs:
           TIMEOUT: ${{ inputs.timeout }}
           NAMESPACE: ${{ inputs.namespace }}
           USE_REAL_LLM: ${{ inputs.use-real-llm }}
+          USE_MOCK_LLM: ${{ inputs.use-real-llm == false && 'true' || 'false' }}
+          MOCK_TIMEOUT: "60"
+          ZEROTOUCH_PLATFORM_DIR: "./zerotouch-platform"
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           # Database credentials from K8s secrets (will be available in pod)
