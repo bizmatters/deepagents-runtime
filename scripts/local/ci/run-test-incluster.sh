@@ -12,7 +12,7 @@ echo ""
 NAMESPACE="intelligence-deepagents"
 TEST_PATH="tests/integration/test_nats_events_integration.py::TestNATSEventsIntegration::test_full_workflow_integration"
 JOB_NAME="checkpoint1-test-$(date +%s)"
-IMAGE_TAG="latest"
+IMAGE_TAG="ci-test"
 
 echo "📋 Configuration:"
 echo "  Namespace: $NAMESPACE"
@@ -89,6 +89,7 @@ spec:
       containers:
       - name: test-runner
         image: "deepagents-runtime:$IMAGE_TAG"
+        imagePullPolicy: Never
         workingDir: /app
         env:
         # Database credentials from K8s secrets
