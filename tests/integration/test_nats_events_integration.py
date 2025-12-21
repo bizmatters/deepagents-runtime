@@ -480,6 +480,50 @@ class TestNATSEventsIntegration:
             
             print("   ✅ App's NATS consumer is healthy (NATS server available)")
 
+    async def test_full_workflow_integration(self):
+        """Test complete workflow: invoke -> stream -> state."""
+        print("\n🔄 Testing Full Workflow Integration")
+        
+        # Import app after environment setup
+        from api.main import app
+        
+        # Create test client to initialize app services
+        with TestClient(app) as client:
+            print("   📱 App initialized with TestClient")
+            
+            # Step 1: Test POST /deepagents-runtime/invoke
+            print("   🚀 Step 1: Testing POST /deepagents-runtime/invoke")
+            
+            job_request = {
+                "trace_id": "test-trace-workflow",
+                "job_id": "test-job-workflow", 
+                "agent_definition": {
+                    "name": "test-workflow-agent",
+                    "version": "1.0",
+                    "nodes": [{"id": "test-node", "type": "agent"}],
+                    "edges": []
+                },
+                "input_payload": {
+                    "messages": [{"role": "user", "content": "Test workflow execution"}]
+                }
+            }
+            
+            # Make HTTP POST request to invoke endpoint
+            response = client.post("/deepagents-runtime/invoke", json=job_request)
+            
+            # Validate response
+            assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+            
+            response_data = response.json()
+            assert "thread_id" in response_data, "Response missing thread_id"
+            assert "status" in response_data, "Response missing status"
+            assert response_data["status"] == "started", f"Expected status 'started', got {response_data['status']}"
+            
+            thread_id = response_data["thread_id"]
+            print(f"   ✅ Step 1 Complete: Received thread_id={thread_id}, status={response_data['status']}")
+            
+            # TODO: Continue with Step 2 (WebSocket streaming)
+
 
 # Run tests
 if __name__ == "__main__":
