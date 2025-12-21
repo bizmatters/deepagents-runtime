@@ -327,6 +327,13 @@ kubectl get events -n intelligence-deepagents --sort-by='.lastTimestamp'
 
 #### COMMAND TO RUN LOCAL CLUSTER WITH ALL SERVICES DEPLOYED: 
 
+### kubectl edit to remove the automated section
+kubectl get application apis -n argocd -o yaml > /tmp/apis-app.yaml && sed '/automated:/,/selfHeal: true/d' /tmp/apis-app.yaml > /tmp/apis-app-modified.yaml && kubectl apply -f /tmp/apis-app-modified.yaml
+
+### Verify Auto Sync is Now Disabled
+kubectl get application apis -n argocd -o jsonpath='{.spec.syncPolicy}' | jq .
+
+
 **Easy method:** deepagents-runtime/scripts/local/ci/run-test-incluster.sh
 
 **Manual method:**
