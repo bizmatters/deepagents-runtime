@@ -35,6 +35,33 @@
 
 ## CI Stability Scripts
 
+### Mandatory Project Structure
+```
+scripts/
+├── ci/                           # Core CI automation scripts
+│   ├── build.sh                  # Docker image building (production/CI modes)
+│   ├── deploy.sh                 # GitOps service deployment automation
+│   ├── in-cluster-test.sh        # Main in-cluster test execution script
+│   ├── test-job-template.yaml    # Kubernetes Job template for tests
+│   ├── run.sh                    # Service runtime execution
+│   ├── run-migrations.sh         # Database migration execution
+│   ├── pre-deploy-diagnostics.sh # Infrastructure readiness validation
+│   ├── post-deploy-diagnostics.sh# Service health verification
+│   └── validate-platform-dependencies.sh # Platform dependency checks
+├── helpers/                      # Service readiness utilities
+│   ├── wait-for-postgres.sh      # PostgreSQL readiness validation
+│   ├── wait-for-dragonfly.sh     # Dragonfly cache readiness validation
+│   ├── wait-for-externalsecret.sh# External Secrets Operator validation
+│   └── wait-for-secret.sh        # Kubernetes secret availability validation
+├── patches/                      # CI environment optimizations
+│   ├── 00-apply-all-patches.sh   # Master patch application script
+│   ├── 01-downsize-postgres.sh   # PostgreSQL resource optimization
+│   ├── 02-downsize-dragonfly.sh  # Dragonfly cache resource optimization
+│   └── 03-downsize-application.sh# Application resource optimization
+└── local/                        # Local development utilities
+    └── ci/                       # Local CI simulation scripts
+```
+
 ### Core CI Scripts (`scripts/ci/`)
 - **`build.sh`**: Docker image building with production and CI modes
 - **`deploy.sh`**: Service deployment automation using GitOps patterns
@@ -62,6 +89,13 @@
 ### Test Infrastructure
 - **`test-job-template.yaml`**: Kubernetes Job template for in-cluster test execution
 - **`tests/integration/in_cluster_conftest.py`**: Centralized test configuration for in-cluster execution
+
+### **MANDATORY: Template Reuse Requirement**
+**ALL CI workflows MUST reuse the standard templates:**
+- **`.github/workflows/in-cluster-test.yml`**: Reusable workflow template - MUST be used by all test workflows
+- **`scripts/ci/test-job-template.yaml`**: Kubernetes Job template - MUST be used for all in-cluster test execution
+- **No custom workflow implementations** - ensures consistency, maintainability, and reliability across all services
+- **Template parameters** provide customization while maintaining standardized infrastructure patterns
 
 ---
 
