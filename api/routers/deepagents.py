@@ -103,33 +103,44 @@ async def _get_thread_state(execution_manager: ExecutionManager, thread_id: str)
     Returns:
         ExecutionState if found, None otherwise
     """
+    logger.info("get_thread_state_start", thread_id=thread_id)
+    
     try:
         # Check if thread exists in checkpointer
-        # This is a simplified implementation - in practice, we'd need to
-        # check the actual checkpointer state and determine status
+        checkpointer = execution_manager.checkpointer if hasattr(execution_manager, 'checkpointer') else None
+        logger.info("checkpointer_available", thread_id=thread_id, has_checkpointer=bool(checkpointer))
         
-        # For now, return a basic implementation
-        # TODO: Implement proper state checking with checkpointer
+        if checkpointer:
+            # Try to get the latest checkpoint for this thread
+            try:
+                logger.info("attempting_checkpointer_get", thread_id=thread_id)
+                # Get the latest checkpoint
+                config = {"configurable": {"thread_id": thread_id}}
+                checkpoint = checkpointer.get(config)
+                logger.info("checkpointer_get_result", thread_id=thread_id, has_checkpoint=bool(checkpoint))
+                
+                if checkpoint:
+                    # Thread exists, determine status based on checkpoint
+                    # If we have a checkpoint, the execution has started
+                    # For now, return a simple "completed" status
+                    # TODO: Implement proper status determination from checkpoint data
+                    logger.info("returning_completed_state", thread_id=thread_id)
+                    return ExecutionState(
+                        thread_id=thread_id,
+                        status="completed",
+                        result={"message": "Execution completed"},
+                        generated_files={}
+                    )
+                else:
+                    logger.info("no_checkpoint_found", thread_id=thread_id)
+            except Exception as e:
+                logger.warning("checkpointer_get_failed", thread_id=thread_id, error=str(e), error_type=type(e).__name__)
+        else:
+            logger.warning("no_checkpointer_available", thread_id=thread_id)
         
-        # Check Redis for any cached state or results
-        redis_client = execution_manager.redis_client if hasattr(execution_manager, 'redis_client') else None
-        
-        if redis_client:
-            # Try to get cached result
-            cached_result = redis_client.get(f"result:{thread_id}")
-            if cached_result:
-                return ExecutionState(
-                    thread_id=thread_id,
-                    status="completed",
-                    result=cached_result,
-                    generated_files=cached_result.get("files") if isinstance(cached_result, dict) else None
-                )
-        
-        # If no cached result, assume running (this is a simplified implementation)
-        return ExecutionState(
-            thread_id=thread_id,
-            status="running"
-        )
+        # If no checkpoint found, thread doesn't exist
+        logger.info("thread_not_found", thread_id=thread_id)
+        return None
         
     except Exception as e:
         logger.error(
@@ -157,11 +168,15 @@ async def _stream_events_for_thread(
         thread_id: Thread ID to monitor
         execution_manager: ExecutionManager instance
     """
+    logger.info("websocket_streaming_start", thread_id=thread_id)
+    
     try:
         # Get Redis client for event streaming
         redis_client = execution_manager.redis_client if hasattr(execution_manager, 'redis_client') else None
+        logger.info("redis_client_check", thread_id=thread_id, has_redis_client=bool(redis_client))
         
         if not redis_client:
+            logger.warning("redis_client_unavailable", thread_id=thread_id)
             await websocket.send_json({
                 "event_type": "error",
                 "data": {
@@ -181,10 +196,14 @@ async def _stream_events_for_thread(
         max_wait_time = 300  # 5 minutes timeout
         elapsed_time = 0
         
+        logger.info("websocket_streaming_loop_start", thread_id=thread_id, max_wait_time=max_wait_time)
+        
         while not execution_completed and elapsed_time < max_wait_time:
             try:
+                logger.debug("checking_thread_state", thread_id=thread_id, elapsed_time=elapsed_time)
                 # Check if execution is complete
                 state = await _get_thread_state(execution_manager, thread_id)
+                logger.debug("thread_state_result", thread_id=thread_id, has_state=bool(state), status=state.status if state else None)
                 
                 if state and state.status == "completed":
                     # Send final state update with files

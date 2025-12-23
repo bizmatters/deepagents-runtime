@@ -58,11 +58,35 @@ create_test_job() {
     # Use the template file and substitute variables
     if [[ -f "$template_file" ]]; then
         log_info "Using template file: $template_file"
+        
+        # Set default values for LLM configuration
+        USE_MOCK_LLM="${USE_MOCK_LLM:-true}"
+        USE_REAL_LLM="${USE_REAL_LLM:-false}"
+        MOCK_TIMEOUT="${MOCK_TIMEOUT:-60}"
+        
+        # Set API keys based on mode
+        if [[ "${USE_MOCK_LLM}" == "false" ]]; then
+            OPENAI_API_KEY="${OPENAI_API_KEY:-}"
+            ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}"
+            if [[ -z "$OPENAI_API_KEY" ]]; then
+                log_error "OPENAI_API_KEY is required when USE_MOCK_LLM=false"
+                exit 1
+            fi
+        else
+            OPENAI_API_KEY="mock-key-for-testing"
+            ANTHROPIC_API_KEY="mock-key-for-testing"
+        fi
+        
         sed -e "s/{{JOB_NAME}}/$JOB_NAME/g" \
             -e "s/{{NAMESPACE}}/$NAMESPACE/g" \
             -e "s/{{IMAGE}}/$IMAGE/g" \
             -e "s|{{TEST_PATH}}|$TEST_PATH|g" \
             -e "s/{{TEST_NAME}}/$TEST_NAME/g" \
+            -e "s/{{USE_MOCK_LLM}}/$USE_MOCK_LLM/g" \
+            -e "s/{{USE_REAL_LLM}}/$USE_REAL_LLM/g" \
+            -e "s/{{MOCK_TIMEOUT}}/$MOCK_TIMEOUT/g" \
+            -e "s/{{OPENAI_API_KEY}}/$OPENAI_API_KEY/g" \
+            -e "s/{{ANTHROPIC_API_KEY}}/$ANTHROPIC_API_KEY/g" \
             "$template_file" > "$job_file"
     else
         log_error "Template file not found: $template_file"

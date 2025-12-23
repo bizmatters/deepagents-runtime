@@ -6,16 +6,19 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
-  image: ghcr.io/arun4infra/deepagents-runtime:latest
-  size: medium
+  image: deepagents-runtime:ci-test
+  size: micro
   nats:
     stream: AGENT_EXECUTION
     consumer: deepagents-runtime-workers
-  # Note: livenessProbe and readinessProbe are configured in the Composition,
-  # not in the claim. The XRD doesn't support these fields directly.
+  
+  # Enhanced HTTP endpoint configuration
+  httpPort: 8000
+  healthPath: "/health"
+  readyPath: "/ready"
+  sessionAffinity: "None"
+  
   # Secrets with standard environment variable names (envFrom)
   secret1Name: deepagents-runtime-db-conn      # POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_SCHEMA
   secret2Name: deepagents-runtime-cache-conn   # DRAGONFLY_HOST, DRAGONFLY_PORT, DRAGONFLY_PASSWORD
   secret3Name: deepagents-runtime-llm-keys     # OPENAI_API_KEY, ANTHROPIC_API_KEY
-  imagePullSecrets:
-    - name: ghcr-pull-secret

@@ -359,7 +359,9 @@ def main() -> None:
     """
     import uvicorn
 
-    uvicorn.run("deepagents_runtime.api.main:app", host="0.0.0.0", port=8080, log_level="info")
+    # Allow port to be configured via environment variable
+    port = int(os.getenv("PORT", "8080"))
+    uvicorn.run("deepagents_runtime.api.main:app", host="0.0.0.0", port=port, log_level="info")
 
 
 if __name__ == "__main__":
