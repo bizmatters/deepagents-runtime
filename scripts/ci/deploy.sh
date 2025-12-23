@@ -8,6 +8,10 @@ set -euo pipefail
 # Called by: GitHub Actions workflow
 # Usage: ./deploy.sh [MODE]
 #   MODE: "production" or "preview" (optional, defaults to auto-detection)
+#
+# IMPORTANT: Preview vs Production Namespace Handling
+# - Production: Namespaces created by tenant-infrastructure (ArgoCD app)
+# - Preview: Namespaces created by this CI script (mocks landing zones)
 # ==============================================================================
 
 # Parse mode parameter
@@ -51,9 +55,12 @@ fi
 
 log_info "✓ Platform is ready for deployment"
 
-# Step 1: Create namespace
-log_info "Creating namespace..."
+# Step 1: Mock Landing Zone (Preview Mode Only)
+# In Production, tenant-infrastructure creates namespaces
+# In Preview, CI must simulate this behavior
+log_info "Setting up landing zone for preview mode..."
 kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
+log_info "✓ Mock landing zone '${NAMESPACE}' created"
 
 # Step 2: Apply ExternalSecret for LLM keys
 log_info "Applying ExternalSecret for LLM keys..."

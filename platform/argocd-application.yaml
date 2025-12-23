@@ -22,4 +22,4 @@ spec:
       selfHeal: true
     syncOptions:
       - ServerSideApply=true
-      - CreateNamespace=true
+      # REMOVED: - CreateNamespace=true  <-- DELETED per namespace policy
