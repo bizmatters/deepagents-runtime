@@ -65,10 +65,24 @@ jobs:
           submodules: recursive
           token: ${{ secrets.BOT_GITHUB_TOKEN || github.token }}
       
+      - name: Read platform branch from config
+        id: platform-config
+        run: |
+          # Read platform branch from ci/config.yaml
+          if command -v yq &> /dev/null; then
+            PLATFORM_BRANCH=$(yq eval '.platform.branch // "main"' ci/config.yaml)
+          else
+            # Fallback: basic grep parsing
+            PLATFORM_BRANCH=$(grep -E '^\s*branch:' ci/config.yaml | sed 's/.*branch:\s*["\x27]*\([^"\x27]*\)["\x27]*.*/\1/' | tr -d ' ' || echo "main")
+          fi
+          echo "platform-branch=$PLATFORM_BRANCH" >> $GITHUB_OUTPUT
+          echo "Using platform branch: $PLATFORM_BRANCH"
+      
       - name: Checkout zerotouch-platform
         uses: actions/checkout@v4
         with:
           repository: 'arun4infra/zerotouch-platform'
+          ref: ${{ steps.platform-config.outputs.platform-branch }}
           path: 'zerotouch-platform'
           token: ${{ secrets.BOT_GITHUB_TOKEN || github.token }}
       
