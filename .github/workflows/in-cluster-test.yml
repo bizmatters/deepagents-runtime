@@ -114,14 +114,8 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          # Store the service directory path
-          SERVICE_DIR="$(pwd)"
-          
-          # The in-cluster-test.sh script should be run from the service directory
-          # but it needs to know where the platform is located
+          # Use centralized platform script with filesystem contract
           chmod +x zerotouch-platform/scripts/bootstrap/preview/tenants/scripts/in-cluster-test.sh
-          
-          # Run the script from service directory - it will detect the platform location
           ./zerotouch-platform/scripts/bootstrap/preview/tenants/scripts/in-cluster-test.sh
       
       - name: Cleanup
