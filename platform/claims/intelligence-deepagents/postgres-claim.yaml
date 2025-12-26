@@ -6,9 +6,9 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
-  size: medium  # small/micro for preview/dev, medium for production
+  size: micro  # small/micro for preview/dev, medium for production
   version: "16"
-  storageGB: 20
+  storageGB: 10
 # Zero-Touch Pattern:
 # - CNPG auto-generates credentials
 # - Database/owner: deepagents-runtime-db

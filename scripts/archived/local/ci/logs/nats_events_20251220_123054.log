@@ -1,0 +1,2212 @@
+================================================================================
+NATS Events Integration Tests - Local Execution
+================================================================================
+  Platform Branch: main
+  Workspace:       /Users/arun_subramanian/Projects/biz-matters
+  Platform Dir:    /Users/arun_subramanian/Projects/biz-matters/zerotouch-platform
+  Artifacts Dir:   /Users/arun_subramanian/Projects/biz-matters/deepagents-runtime/artifacts
+================================================================================
+[0;34m[INFO][0m Loading environment variables from .env...
+[0;32m[SUCCESS][0m Environment variables loaded from .env
+[0;34m[INFO][0m Validating prerequisites...
+[0;32m[SUCCESS][0m Prerequisites validated
+[0;34m[INFO][0m Creating fresh platform directory for clean Git state...
+[0;34m[INFO][0m Cloning platform repository for clean Git state...
+Cloning into '/Users/arun_subramanian/Projects/biz-matters/zerotouch-platform-fresh'...
+done.
+[0;32m[SUCCESS][0m Fresh platform directory created at: /Users/arun_subramanian/Projects/biz-matters/zerotouch-platform-fresh
+[0;34m[INFO][0m Exporting AWS credentials...
+[0;32m[SUCCESS][0m AWS credentials exported
+[0;34m[INFO][0m Setting up Python environment...
+[0;34m[INFO][0m Creating Python virtual environment...
+[0;32m[SUCCESS][0m Virtual environment activated
+[0;34m[INFO][0m Installing Python dependencies...
+Requirement already satisfied: pip in ./.venv/lib/python3.12/site-packages (25.3)
+Obtaining file:///Users/arun_subramanian/Projects/biz-matters/deepagents-runtime
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Getting requirements to build editable: started
+  Getting requirements to build editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Requirement already satisfied: fastapi>=0.115.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (0.124.4)
+Requirement already satisfied: uvicorn>=0.32.0 in ./.venv/lib/python3.12/site-packages (from uvicorn[standard]>=0.32.0->deepagents_runtime==0.1.0) (0.38.0)
+Requirement already satisfied: nats-py>=2.9.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (2.12.0)
+Requirement already satisfied: deepagents>=0.2.7 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (0.3.0)
+Requirement already satisfied: langgraph>=1.0.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (1.0.4)
+Requirement already satisfied: langgraph-checkpoint-postgres>=3.0.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (3.0.2)
+Requirement already satisfied: langchain>=1.0.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (1.1.3)
+Requirement already satisfied: langchain-openai>=0.3.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (1.1.2)
+Requirement already satisfied: langchain-anthropic>=1.0.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (1.2.0)
+Requirement already satisfied: langsmith>=0.2.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (0.4.59)
+Requirement already satisfied: psycopg>=3.2.0 in ./.venv/lib/python3.12/site-packages (from psycopg[binary,pool]>=3.2.0->deepagents_runtime==0.1.0) (3.3.2)
+Requirement already satisfied: redis>=5.2.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (7.1.0)
+Requirement already satisfied: cloudevents>=1.11.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (1.12.0)
+Requirement already satisfied: pydantic>=2.10.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (2.12.5)
+Requirement already satisfied: pydantic-settings>=2.1.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (2.12.0)
+Requirement already satisfied: structlog>=24.4.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (25.5.0)
+Requirement already satisfied: opentelemetry-api>=1.28.2 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (1.39.1)
+Requirement already satisfied: opentelemetry-sdk>=1.28.2 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (1.39.1)
+Requirement already satisfied: opentelemetry-instrumentation-fastapi>=0.49b2 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (0.60b1)
+Requirement already satisfied: opentelemetry-exporter-otlp>=1.28.2 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (1.39.1)
+Requirement already satisfied: httpx>=0.27.2 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (0.28.1)
+Requirement already satisfied: prometheus-client>=0.19.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (0.23.1)
+Requirement already satisfied: python-dotenv>=1.0.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (1.2.1)
+Requirement already satisfied: jsonschema>=4.23.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (4.25.1)
+Requirement already satisfied: pytest>=8.3.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (9.0.2)
+Requirement already satisfied: pytest-asyncio>=0.24.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (1.3.0)
+Requirement already satisfied: pytest-mock>=3.14.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (3.15.1)
+Requirement already satisfied: pytest-cov>=4.1.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (7.0.0)
+Requirement already satisfied: pytest-timeout>=2.3.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (2.4.0)
+Requirement already satisfied: black>=24.1.1 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (25.12.0)
+Requirement already satisfied: ruff>=0.1.13 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (0.14.9)
+Requirement already satisfied: mypy>=1.8.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (1.19.0)
+Requirement already satisfied: types-redis>=4.6.0 in ./.venv/lib/python3.12/site-packages (from deepagents_runtime==0.1.0) (4.6.0.20241004)
+Requirement already satisfied: langgraph-cli>=0.4.4 in ./.venv/lib/python3.12/site-packages (from langgraph-cli[inmem]>=0.4.4; extra == "dev"->deepagents_runtime==0.1.0) (0.4.9)
+Requirement already satisfied: click>=8.0.0 in ./.venv/lib/python3.12/site-packages (from black>=24.1.1->deepagents_runtime==0.1.0) (8.3.1)
+Requirement already satisfied: mypy-extensions>=0.4.3 in ./.venv/lib/python3.12/site-packages (from black>=24.1.1->deepagents_runtime==0.1.0) (1.1.0)
+Requirement already satisfied: packaging>=22.0 in ./.venv/lib/python3.12/site-packages (from black>=24.1.1->deepagents_runtime==0.1.0) (25.0)
+Requirement already satisfied: pathspec>=0.9.0 in ./.venv/lib/python3.12/site-packages (from black>=24.1.1->deepagents_runtime==0.1.0) (0.12.1)
+Requirement already satisfied: platformdirs>=2 in ./.venv/lib/python3.12/site-packages (from black>=24.1.1->deepagents_runtime==0.1.0) (4.5.1)
+Requirement already satisfied: pytokens>=0.3.0 in ./.venv/lib/python3.12/site-packages (from black>=24.1.1->deepagents_runtime==0.1.0) (0.3.0)
+Requirement already satisfied: deprecation<3.0,>=2.0 in ./.venv/lib/python3.12/site-packages (from cloudevents>=1.11.0->deepagents_runtime==0.1.0) (2.1.0)
+Requirement already satisfied: langchain-core<2.0.0,>=1.1.0 in ./.venv/lib/python3.12/site-packages (from deepagents>=0.2.7->deepagents_runtime==0.1.0) (1.1.3)
+Requirement already satisfied: wcmatch in ./.venv/lib/python3.12/site-packages (from deepagents>=0.2.7->deepagents_runtime==0.1.0) (10.1)
+Requirement already satisfied: anthropic<1.0.0,>=0.73.0 in ./.venv/lib/python3.12/site-packages (from langchain-anthropic>=1.0.0->deepagents_runtime==0.1.0) (0.75.0)
+Requirement already satisfied: anyio<5,>=3.5.0 in ./.venv/lib/python3.12/site-packages (from anthropic<1.0.0,>=0.73.0->langchain-anthropic>=1.0.0->deepagents_runtime==0.1.0) (4.12.0)
+Requirement already satisfied: distro<2,>=1.7.0 in ./.venv/lib/python3.12/site-packages (from anthropic<1.0.0,>=0.73.0->langchain-anthropic>=1.0.0->deepagents_runtime==0.1.0) (1.9.0)
+Requirement already satisfied: docstring-parser<1,>=0.15 in ./.venv/lib/python3.12/site-packages (from anthropic<1.0.0,>=0.73.0->langchain-anthropic>=1.0.0->deepagents_runtime==0.1.0) (0.17.0)
+Requirement already satisfied: jiter<1,>=0.4.0 in ./.venv/lib/python3.12/site-packages (from anthropic<1.0.0,>=0.73.0->langchain-anthropic>=1.0.0->deepagents_runtime==0.1.0) (0.12.0)
+Requirement already satisfied: sniffio in ./.venv/lib/python3.12/site-packages (from anthropic<1.0.0,>=0.73.0->langchain-anthropic>=1.0.0->deepagents_runtime==0.1.0) (1.3.1)
+Requirement already satisfied: typing-extensions<5,>=4.10 in ./.venv/lib/python3.12/site-packages (from anthropic<1.0.0,>=0.73.0->langchain-anthropic>=1.0.0->deepagents_runtime==0.1.0) (4.15.0)
+Requirement already satisfied: idna>=2.8 in ./.venv/lib/python3.12/site-packages (from anyio<5,>=3.5.0->anthropic<1.0.0,>=0.73.0->langchain-anthropic>=1.0.0->deepagents_runtime==0.1.0) (3.11)
+Requirement already satisfied: certifi in ./.venv/lib/python3.12/site-packages (from httpx>=0.27.2->deepagents_runtime==0.1.0) (2025.11.12)
+Requirement already satisfied: httpcore==1.* in ./.venv/lib/python3.12/site-packages (from httpx>=0.27.2->deepagents_runtime==0.1.0) (1.0.9)
+Requirement already satisfied: h11>=0.16 in ./.venv/lib/python3.12/site-packages (from httpcore==1.*->httpx>=0.27.2->deepagents_runtime==0.1.0) (0.16.0)
+Requirement already satisfied: jsonpatch<2.0.0,>=1.33.0 in ./.venv/lib/python3.12/site-packages (from langchain-core<2.0.0,>=1.1.0->deepagents>=0.2.7->deepagents_runtime==0.1.0) (1.33)
+Requirement already satisfied: pyyaml<7.0.0,>=5.3.0 in ./.venv/lib/python3.12/site-packages (from langchain-core<2.0.0,>=1.1.0->deepagents>=0.2.7->deepagents_runtime==0.1.0) (6.0.3)
+Requirement already satisfied: tenacity!=8.4.0,<10.0.0,>=8.1.0 in ./.venv/lib/python3.12/site-packages (from langchain-core<2.0.0,>=1.1.0->deepagents>=0.2.7->deepagents_runtime==0.1.0) (9.1.2)
+Requirement already satisfied: uuid-utils<1.0,>=0.12.0 in ./.venv/lib/python3.12/site-packages (from langchain-core<2.0.0,>=1.1.0->deepagents>=0.2.7->deepagents_runtime==0.1.0) (0.12.0)
+Requirement already satisfied: jsonpointer>=1.9 in ./.venv/lib/python3.12/site-packages (from jsonpatch<2.0.0,>=1.33.0->langchain-core<2.0.0,>=1.1.0->deepagents>=0.2.7->deepagents_runtime==0.1.0) (3.0.0)
+Requirement already satisfied: langgraph-checkpoint<4.0.0,>=2.1.0 in ./.venv/lib/python3.12/site-packages (from langgraph>=1.0.0->deepagents_runtime==0.1.0) (3.0.1)
+Requirement already satisfied: langgraph-prebuilt<1.1.0,>=1.0.2 in ./.venv/lib/python3.12/site-packages (from langgraph>=1.0.0->deepagents_runtime==0.1.0) (1.0.5)
+Requirement already satisfied: langgraph-sdk<0.3.0,>=0.2.2 in ./.venv/lib/python3.12/site-packages (from langgraph>=1.0.0->deepagents_runtime==0.1.0) (0.2.15)
+Requirement already satisfied: xxhash>=3.5.0 in ./.venv/lib/python3.12/site-packages (from langgraph>=1.0.0->deepagents_runtime==0.1.0) (3.6.0)
+Requirement already satisfied: ormsgpack>=1.12.0 in ./.venv/lib/python3.12/site-packages (from langgraph-checkpoint<4.0.0,>=2.1.0->langgraph>=1.0.0->deepagents_runtime==0.1.0) (1.12.0)
+Requirement already satisfied: orjson>=3.10.1 in ./.venv/lib/python3.12/site-packages (from langgraph-sdk<0.3.0,>=0.2.2->langgraph>=1.0.0->deepagents_runtime==0.1.0) (3.11.5)
+Requirement already satisfied: requests-toolbelt>=1.0.0 in ./.venv/lib/python3.12/site-packages (from langsmith>=0.2.0->deepagents_runtime==0.1.0) (1.0.0)
+Requirement already satisfied: requests>=2.0.0 in ./.venv/lib/python3.12/site-packages (from langsmith>=0.2.0->deepagents_runtime==0.1.0) (2.32.5)
+Requirement already satisfied: zstandard>=0.23.0 in ./.venv/lib/python3.12/site-packages (from langsmith>=0.2.0->deepagents_runtime==0.1.0) (0.25.0)
+Requirement already satisfied: annotated-types>=0.6.0 in ./.venv/lib/python3.12/site-packages (from pydantic>=2.10.0->deepagents_runtime==0.1.0) (0.7.0)
+Requirement already satisfied: pydantic-core==2.41.5 in ./.venv/lib/python3.12/site-packages (from pydantic>=2.10.0->deepagents_runtime==0.1.0) (2.41.5)
+Requirement already satisfied: typing-inspection>=0.4.2 in ./.venv/lib/python3.12/site-packages (from pydantic>=2.10.0->deepagents_runtime==0.1.0) (0.4.2)
+Requirement already satisfied: starlette<0.51.0,>=0.40.0 in ./.venv/lib/python3.12/site-packages (from fastapi>=0.115.0->deepagents_runtime==0.1.0) (0.50.0)
+Requirement already satisfied: annotated-doc>=0.0.2 in ./.venv/lib/python3.12/site-packages (from fastapi>=0.115.0->deepagents_runtime==0.1.0) (0.0.4)
+Requirement already satisfied: attrs>=22.2.0 in ./.venv/lib/python3.12/site-packages (from jsonschema>=4.23.0->deepagents_runtime==0.1.0) (25.4.0)
+Requirement already satisfied: jsonschema-specifications>=2023.03.6 in ./.venv/lib/python3.12/site-packages (from jsonschema>=4.23.0->deepagents_runtime==0.1.0) (2025.9.1)
+Requirement already satisfied: referencing>=0.28.4 in ./.venv/lib/python3.12/site-packages (from jsonschema>=4.23.0->deepagents_runtime==0.1.0) (0.37.0)
+Requirement already satisfied: rpds-py>=0.7.1 in ./.venv/lib/python3.12/site-packages (from jsonschema>=4.23.0->deepagents_runtime==0.1.0) (0.30.0)
+Requirement already satisfied: openai<3.0.0,>=1.109.1 in ./.venv/lib/python3.12/site-packages (from langchain-openai>=0.3.0->deepagents_runtime==0.1.0) (2.11.0)
+Requirement already satisfied: tiktoken<1.0.0,>=0.7.0 in ./.venv/lib/python3.12/site-packages (from langchain-openai>=0.3.0->deepagents_runtime==0.1.0) (0.12.0)
+Requirement already satisfied: tqdm>4 in ./.venv/lib/python3.12/site-packages (from openai<3.0.0,>=1.109.1->langchain-openai>=0.3.0->deepagents_runtime==0.1.0) (4.67.1)
+Requirement already satisfied: regex>=2022.1.18 in ./.venv/lib/python3.12/site-packages (from tiktoken<1.0.0,>=0.7.0->langchain-openai>=0.3.0->deepagents_runtime==0.1.0) (2025.11.3)
+Requirement already satisfied: psycopg-pool>=3.2.0 in ./.venv/lib/python3.12/site-packages (from langgraph-checkpoint-postgres>=3.0.0->deepagents_runtime==0.1.0) (3.3.0)
+Requirement already satisfied: langgraph-api<0.6.0,>=0.5.35 in ./.venv/lib/python3.12/site-packages (from langgraph-cli[inmem]>=0.4.4; extra == "dev"->deepagents_runtime==0.1.0) (0.5.41)
+Requirement already satisfied: langgraph-runtime-inmem>=0.7 in ./.venv/lib/python3.12/site-packages (from langgraph-cli[inmem]>=0.4.4; extra == "dev"->deepagents_runtime==0.1.0) (0.20.1)
+Requirement already satisfied: cloudpickle>=3.0.0 in ./.venv/lib/python3.12/site-packages (from langgraph-api<0.6.0,>=0.5.35->langgraph-cli[inmem]>=0.4.4; extra == "dev"->deepagents_runtime==0.1.0) (3.1.2)
+Requirement already satisfied: cryptography<45.0,>=42.0.0 in ./.venv/lib/python3.12/site-packages (from langgraph-api<0.6.0,>=0.5.35->langgraph-cli[inmem]>=0.4.4; extra == "dev"->deepagents_runtime==0.1.0) (44.0.3)
+Requirement already satisfied: grpcio-tools==1.75.1 in ./.venv/lib/python3.12/site-packages (from langgraph-api<0.6.0,>=0.5.35->langgraph-cli[inmem]>=0.4.4; extra == "dev"->deepagents_runtime==0.1.0) (1.75.1)
+Requirement already satisfied: grpcio<2.0.0,>=1.75.0 in ./.venv/lib/python3.12/site-packages (from langgraph-api<0.6.0,>=0.5.35->langgraph-cli[inmem]>=0.4.4; extra == "dev"->deepagents_runtime==0.1.0) (1.76.0)
+Requirement already satisfied: jsonschema-rs<0.30,>=0.20.0 in ./.venv/lib/python3.12/site-packages (from langgraph-api<0.6.0,>=0.5.35->langgraph-cli[inmem]>=0.4.4; extra == "dev"->deepagents_runtime==0.1.0) (0.29.1)
+Requirement already satisfied: opentelemetry-exporter-otlp-proto-http>=1.37.0 in ./.venv/lib/python3.12/site-packages (from langgraph-api<0.6.0,>=0.5.35->langgraph-cli[inmem]>=0.4.4; extra == "dev"->deepagents_runtime==0.1.0) (1.39.1)
+Requirement already satisfied: protobuf<7.0.0,>=6.32.1 in ./.venv/lib/python3.12/site-packages (from langgraph-api<0.6.0,>=0.5.35->langgraph-cli[inmem]>=0.4.4; extra == "dev"->deepagents_runtime==0.1.0) (6.33.2)
+Requirement already satisfied: pyjwt>=2.9.0 in ./.venv/lib/python3.12/site-packages (from langgraph-api<0.6.0,>=0.5.35->langgraph-cli[inmem]>=0.4.4; extra == "dev"->deepagents_runtime==0.1.0) (2.10.1)
+Requirement already satisfied: sse-starlette<2.2.0,>=2.1.0 in ./.venv/lib/python3.12/site-packages (from langgraph-api<0.6.0,>=0.5.35->langgraph-cli[inmem]>=0.4.4; extra == "dev"->deepagents_runtime==0.1.0) (2.1.3)
+Requirement already satisfied: truststore>=0.1 in ./.venv/lib/python3.12/site-packages (from langgraph-api<0.6.0,>=0.5.35->langgraph-cli[inmem]>=0.4.4; extra == "dev"->deepagents_runtime==0.1.0) (0.10.4)
+Requirement already satisfied: watchfiles>=0.13 in ./.venv/lib/python3.12/site-packages (from langgraph-api<0.6.0,>=0.5.35->langgraph-cli[inmem]>=0.4.4; extra == "dev"->deepagents_runtime==0.1.0) (1.1.1)
+Requirement already satisfied: setuptools in ./.venv/lib/python3.12/site-packages (from grpcio-tools==1.75.1->langgraph-api<0.6.0,>=0.5.35->langgraph-cli[inmem]>=0.4.4; extra == "dev"->deepagents_runtime==0.1.0) (80.9.0)
+Requirement already satisfied: cffi>=1.12 in ./.venv/lib/python3.12/site-packages (from cryptography<45.0,>=42.0.0->langgraph-api<0.6.0,>=0.5.35->langgraph-cli[inmem]>=0.4.4; extra == "dev"->deepagents_runtime==0.1.0) (2.0.0)
+Requirement already satisfied: blockbuster<2.0.0,>=1.5.24 in ./.venv/lib/python3.12/site-packages (from langgraph-runtime-inmem>=0.7->langgraph-cli[inmem]>=0.4.4; extra == "dev"->deepagents_runtime==0.1.0) (1.5.26)
+Requirement already satisfied: forbiddenfruit>=0.1.4 in ./.venv/lib/python3.12/site-packages (from blockbuster<2.0.0,>=1.5.24->langgraph-runtime-inmem>=0.7->langgraph-cli[inmem]>=0.4.4; extra == "dev"->deepagents_runtime==0.1.0) (0.1.4)
+Requirement already satisfied: pycparser in ./.venv/lib/python3.12/site-packages (from cffi>=1.12->cryptography<45.0,>=42.0.0->langgraph-api<0.6.0,>=0.5.35->langgraph-cli[inmem]>=0.4.4; extra == "dev"->deepagents_runtime==0.1.0) (2.23)
+Requirement already satisfied: librt>=0.6.2 in ./.venv/lib/python3.12/site-packages (from mypy>=1.8.0->deepagents_runtime==0.1.0) (0.7.3)
+Requirement already satisfied: importlib-metadata<8.8.0,>=6.0 in ./.venv/lib/python3.12/site-packages (from opentelemetry-api>=1.28.2->deepagents_runtime==0.1.0) (8.7.0)
+Requirement already satisfied: zipp>=3.20 in ./.venv/lib/python3.12/site-packages (from importlib-metadata<8.8.0,>=6.0->opentelemetry-api>=1.28.2->deepagents_runtime==0.1.0) (3.23.0)
+Requirement already satisfied: opentelemetry-exporter-otlp-proto-grpc==1.39.1 in ./.venv/lib/python3.12/site-packages (from opentelemetry-exporter-otlp>=1.28.2->deepagents_runtime==0.1.0) (1.39.1)
+Requirement already satisfied: googleapis-common-protos~=1.57 in ./.venv/lib/python3.12/site-packages (from opentelemetry-exporter-otlp-proto-grpc==1.39.1->opentelemetry-exporter-otlp>=1.28.2->deepagents_runtime==0.1.0) (1.72.0)
+Requirement already satisfied: opentelemetry-exporter-otlp-proto-common==1.39.1 in ./.venv/lib/python3.12/site-packages (from opentelemetry-exporter-otlp-proto-grpc==1.39.1->opentelemetry-exporter-otlp>=1.28.2->deepagents_runtime==0.1.0) (1.39.1)
+Requirement already satisfied: opentelemetry-proto==1.39.1 in ./.venv/lib/python3.12/site-packages (from opentelemetry-exporter-otlp-proto-grpc==1.39.1->opentelemetry-exporter-otlp>=1.28.2->deepagents_runtime==0.1.0) (1.39.1)
+Requirement already satisfied: opentelemetry-semantic-conventions==0.60b1 in ./.venv/lib/python3.12/site-packages (from opentelemetry-sdk>=1.28.2->deepagents_runtime==0.1.0) (0.60b1)
+Requirement already satisfied: charset_normalizer<4,>=2 in ./.venv/lib/python3.12/site-packages (from requests>=2.0.0->langsmith>=0.2.0->deepagents_runtime==0.1.0) (3.4.4)
+Requirement already satisfied: urllib3<3,>=1.21.1 in ./.venv/lib/python3.12/site-packages (from requests>=2.0.0->langsmith>=0.2.0->deepagents_runtime==0.1.0) (2.6.2)
+Requirement already satisfied: opentelemetry-instrumentation-asgi==0.60b1 in ./.venv/lib/python3.12/site-packages (from opentelemetry-instrumentation-fastapi>=0.49b2->deepagents_runtime==0.1.0) (0.60b1)
+Requirement already satisfied: opentelemetry-instrumentation==0.60b1 in ./.venv/lib/python3.12/site-packages (from opentelemetry-instrumentation-fastapi>=0.49b2->deepagents_runtime==0.1.0) (0.60b1)
+Requirement already satisfied: opentelemetry-util-http==0.60b1 in ./.venv/lib/python3.12/site-packages (from opentelemetry-instrumentation-fastapi>=0.49b2->deepagents_runtime==0.1.0) (0.60b1)
+Requirement already satisfied: wrapt<2.0.0,>=1.0.0 in ./.venv/lib/python3.12/site-packages (from opentelemetry-instrumentation==0.60b1->opentelemetry-instrumentation-fastapi>=0.49b2->deepagents_runtime==0.1.0) (1.17.3)
+Requirement already satisfied: asgiref~=3.0 in ./.venv/lib/python3.12/site-packages (from opentelemetry-instrumentation-asgi==0.60b1->opentelemetry-instrumentation-fastapi>=0.49b2->deepagents_runtime==0.1.0) (3.11.0)
+Requirement already satisfied: psycopg-binary==3.3.2 in ./.venv/lib/python3.12/site-packages (from psycopg[binary,pool]>=3.2.0->deepagents_runtime==0.1.0) (3.3.2)
+Requirement already satisfied: iniconfig>=1.0.1 in ./.venv/lib/python3.12/site-packages (from pytest>=8.3.0->deepagents_runtime==0.1.0) (2.3.0)
+Requirement already satisfied: pluggy<2,>=1.5 in ./.venv/lib/python3.12/site-packages (from pytest>=8.3.0->deepagents_runtime==0.1.0) (1.6.0)
+Requirement already satisfied: pygments>=2.7.2 in ./.venv/lib/python3.12/site-packages (from pytest>=8.3.0->deepagents_runtime==0.1.0) (2.19.2)
+Requirement already satisfied: coverage>=7.10.6 in ./.venv/lib/python3.12/site-packages (from coverage[toml]>=7.10.6->pytest-cov>=4.1.0->deepagents_runtime==0.1.0) (7.13.0)
+Requirement already satisfied: types-pyOpenSSL in ./.venv/lib/python3.12/site-packages (from types-redis>=4.6.0->deepagents_runtime==0.1.0) (24.1.0.20240722)
+Requirement already satisfied: httptools>=0.6.3 in ./.venv/lib/python3.12/site-packages (from uvicorn[standard]>=0.32.0->deepagents_runtime==0.1.0) (0.7.1)
+Requirement already satisfied: uvloop>=0.15.1 in ./.venv/lib/python3.12/site-packages (from uvicorn[standard]>=0.32.0->deepagents_runtime==0.1.0) (0.22.1)
+Requirement already satisfied: websockets>=10.4 in ./.venv/lib/python3.12/site-packages (from uvicorn[standard]>=0.32.0->deepagents_runtime==0.1.0) (15.0.1)
+Requirement already satisfied: types-cffi in ./.venv/lib/python3.12/site-packages (from types-pyOpenSSL->types-redis>=4.6.0->deepagents_runtime==0.1.0) (1.17.0.20250915)
+Requirement already satisfied: types-setuptools in ./.venv/lib/python3.12/site-packages (from types-cffi->types-pyOpenSSL->types-redis>=4.6.0->deepagents_runtime==0.1.0) (80.9.0.20250822)
+Requirement already satisfied: bracex>=2.1.1 in ./.venv/lib/python3.12/site-packages (from wcmatch->deepagents>=0.2.7->deepagents_runtime==0.1.0) (2.6)
+Building wheels for collected packages: deepagents_runtime
+  Building editable for deepagents_runtime (pyproject.toml): started
+  Building editable for deepagents_runtime (pyproject.toml): finished with status 'done'
+  Created wheel for deepagents_runtime: filename=deepagents_runtime-0.1.0-0.editable-py3-none-any.whl size=5224 sha256=7de85f4153a5937b3dd24e857d457880e7887f0ada46541dff1ad8f0073409e0
+  Stored in directory: /private/var/folders/k0/2mrr_vvn7zn8d3hg6ymscktm0000gn/T/pip-ephem-wheel-cache-rs66tlm8/wheels/52/83/97/d8bb6a2b476c068bf511074823f65ec580aa38b9cd117f1041
+Successfully built deepagents_runtime
+Installing collected packages: deepagents_runtime
+  Attempting uninstall: deepagents_runtime
+    Found existing installation: deepagents_runtime 0.1.0
+    Uninstalling deepagents_runtime-0.1.0:
+      Successfully uninstalled deepagents_runtime-0.1.0
+Successfully installed deepagents_runtime-0.1.0
+[0;32m[SUCCESS][0m Python dependencies installed
+[0;34m[INFO][0m Bootstrapping platform preview environment...
+[0;34m╔══════════════════════════════════════════════════════════════╗[0m
+[0;34m║   BizMatters Infrastructure - Master Bootstrap Script      ║[0m
+[0;34m╚══════════════════════════════════════════════════════════════╝[0m
+
+[0;32mMode:[0m preview
+
+[0;34mRunning in PREVIEW mode (GitHub Actions/Kind)[0m
+
+[0;34m╔══════════════════════════════════════════════════════════════╗[0m
+[0;34m║   Setup Preview Cluster                                     ║[0m
+[0;34m╚══════════════════════════════════════════════════════════════╝[0m
+
+[0;34mPreview mode configured[0m
+
+[0;34mApplying preview patches...[0m
+[0;34m╔══════════════════════════════════════════════════════════════╗[0m
+[0;34m║   Applying Preview/Kind Patches                             ║[0m
+[0;34m╚══════════════════════════════════════════════════════════════╝[0m
+
+[0;34mRunning: 03-patch-tolerations.sh[0m
+[1;33mNOTE: This script is now deprecated.[0m
+[0;34mControl plane toleration removal is now handled by Kustomize overlays in bootstrap/argocd/overlays/preview[0m
+[0;32m✓ No action needed - overlays will handle toleration patching automatically[0m
+
+[0;34mRunning: 04-exclude-local-path.sh[0m
+[0;34mExcluding local-path-provisioner from preview mode...[0m
+  [0;32m✓[0m Disabled: 00-local-path-provisioner.yaml
+  [0;32m✓[0m No 00-* files found in base directory
+  [0;34mℹ[0m Kind clusters use built-in local-path storage
+  [0;34mℹ[0m Preview overlay excludes 00-* bootstrap files
+[0;32m✓ Local-path-provisioner excluded from preview mode[0m
+
+[0;34mRunning: 05-verify-storage-provisioner.sh[0m
+[0;34mVerifying local-path-provisioner for Kind cluster...[0m
+[0;34mContext: kind-zerotouch-preview[0m
+[0;34mChecking for Kind's built-in provisioner...[0m
+  [0;32m✓[0m Kind v1.34+ detected with built-in provisioner (storage class: standard)
+[0;34mChecking storage class configuration...[0m
+[0;34mCurrent storage classes:[0m
+NAME         PROVISIONER             DEFAULT
+local-path   rancher.io/local-path   false
+standard     rancher.io/local-path   true
+  [0;32m✓[0m local-path storage class exists (provisioner: rancher.io/local-path, default: false)
+[0;32m✓ Storage provisioner verification complete[0m
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+
+[0;34mRunning: 06-optimize-preview-resources.sh[0m
+[0;34mOptimizing resources for preview mode...[0m
+  [0;32m✓[0m Disabled NATS persistence (using memory-only mode)
+  [0;32m✓[0m Reduced NATS CPU (50m request, 250m limit)
+[0;34mVerifying overlay optimizations...[0m
+  [0;32m✓[0m Overlay optimizations verified (NATS, Kagent, KEDA)
+[0;32m✓ Preview resource optimizations applied[0m
+[0;34m  Estimated savings: ~400m CPU, ~500Mi memory[0m
+
+[0;34mRunning: 07-disable-cilium-for-kind.sh[0m
+[1;33mNOTE: This script is now deprecated.[0m
+[0;34mCilium exclusion is now handled by Kustomize overlays:[0m
+[0;34m  - bootstrap/argocd/overlays/preview/kustomization.yaml excludes cilium.yaml[0m
+[0;34m  - bootstrap/argocd/overlays/production includes Cilium in overlays/production/cilium/[0m
+[0;32m✓ No action needed - overlay structure handles Cilium exclusion[0m
+[0;34m  Kind clusters use kindnet CNI instead[0m
+
+[0;32m✓ All preview patches applied successfully[0m
+
+[0;34mUpdating Kind config to mount local repo...[0m
+[0;32m✓ Kind config updated with local repo mount at /repo[0m
+
+[0;32m✓ AWS credentials configured[0m
+
+[1;33mChecking required tools...[0m
+[0;32m✓ kubectl available[0m
+[0;32m✓ helm available[0m
+[0;32m✓ kind available[0m
+
+[1;33mKind cluster 'zerotouch-preview' already exists[0m
+Switched to context "kind-zerotouch-preview".
+[0;34mLabeling nodes for database workloads...[0m
+node/zerotouch-preview-control-plane not labeled
+[0;32m✓ Nodes labeled[0m
+
+
+[0;32m✓ Preview cluster setup complete[0m
+  Cluster: [0;34mkind-zerotouch-preview[0m
+  Context: [0;34mkind-zerotouch-preview[0m
+
+[0;34m[1-5/14] Skipping Talos installation (preview mode uses Kind)[0m
+[1;33m[6/14] Injecting ESO secrets...[0m
+Using AWS credentials from environment variables
+  ℹ No session token (using long-term credentials)
+Ensuring external-secrets namespace exists...
+namespace/external-secrets unchanged
+Creating aws-access-token secret in external-secrets namespace...
+secret/aws-access-token unchanged
+✓ AWS credentials injected (long-term credentials)
+ESO can now authenticate to AWS Systems Manager Parameter Store
+[1;33m[7/14] Injecting SSM parameters...[0m
+[0;34m╔══════════════════════════════════════════════════════════════╗[0m
+[0;34m║   AWS SSM Parameter Store - Secrets Injection               ║[0m
+[0;34m╚══════════════════════════════════════════════════════════════╝[0m
+
+[1;33m⚠️  .env.ssm not found, generating from environment variables...[0m
+[0;34m╔══════════════════════════════════════════════════════════════╗[0m
+[0;34m║   Generate .env.ssm from Environment Variables              ║[0m
+[0;34m╚══════════════════════════════════════════════════════════════╝[0m
+
+[0;32m✓ Template: .env.ssm.example[0m
+[0;32m✓ Output: .env.ssm[0m
+
+[0;32m✓ Mapped OPENAI_API_KEY -> /zerotouch/prod/openai_api_key[0m
+[0;32m✓ Mapped ANTHROPIC_API_KEY -> /zerotouch/prod/anthropic_api_key[0m
+[0;32m✓ Mapped BOT_GITHUB_USERNAME -> /zerotouch/prod/ghcr/username[0m
+[0;32m✓ Mapped BOT_GITHUB_USERNAME -> /zerotouch/prod/github/username[0m
+[0;32m✓ Mapped BOT_GITHUB_TOKEN -> /zerotouch/prod/ghcr/password[0m
+[0;32m✓ Mapped BOT_GITHUB_TOKEN -> /zerotouch/prod/github/token[0m
+[1;33m⚠️  Environment variable TENANTS_REPO_URL not set for /zerotouch/prod/argocd/repos/zerotouch-tenants/url[0m
+[0;32m✓ Mapped BOT_GITHUB_USERNAME -> /zerotouch/prod/argocd/repos/zerotouch-tenants/username[0m
+[0;32m✓ Mapped BOT_GITHUB_TOKEN -> /zerotouch/prod/argocd/repos/zerotouch-tenants/password[0m
+
+[0;34m╔══════════════════════════════════════════════════════════════╗[0m
+[0;34m║   Summary                                                    ║[0m
+[0;34m╚══════════════════════════════════════════════════════════════╝[0m
+
+[0;32m✓ Parameters mapped: 8[0m
+[1;33m⚠️  Parameters missing: 1[0m
+
+[0;32m✓ Generated .env.ssm from environment variables[0m
+[0;32m✓ AWS CLI configured[0m
+[0;32m✓ Region: ap-south-1[0m
+
+[0;34mProcessing .env.ssm...[0m
+
+[0;34mCreating parameter:[0m /zerotouch/prod/openai_api_key
+[0;32m✓ Created: /zerotouch/prod/openai_api_key[0m
+[0;34mCreating parameter:[0m /zerotouch/prod/anthropic_api_key
+[0;32m✓ Created: /zerotouch/prod/anthropic_api_key[0m
+[0;34mCreating parameter:[0m /zerotouch/prod/ghcr/username
+[0;32m✓ Created: /zerotouch/prod/ghcr/username[0m
+[0;34mCreating parameter:[0m /zerotouch/prod/github/username
+[0;32m✓ Created: /zerotouch/prod/github/username[0m
+[0;34mCreating parameter:[0m /zerotouch/prod/ghcr/password
+[0;32m✓ Created: /zerotouch/prod/ghcr/password[0m
+[0;34mCreating parameter:[0m /zerotouch/prod/github/token
+[0;32m✓ Created: /zerotouch/prod/github/token[0m
+[0;34mCreating parameter:[0m /zerotouch/prod/argocd/repos/zerotouch-tenants/username
+[0;32m✓ Created: /zerotouch/prod/argocd/repos/zerotouch-tenants/username[0m
+[0;34mCreating parameter:[0m /zerotouch/prod/argocd/repos/zerotouch-tenants/password
+[0;32m✓ Created: /zerotouch/prod/argocd/repos/zerotouch-tenants/password[0m
+
+[0;34m╔══════════════════════════════════════════════════════════════╗[0m
+[0;34m║   Summary                                                    ║[0m
+[0;34m╚══════════════════════════════════════════════════════════════╝[0m
+
+[0;32m✓ Parameters created: 8[0m
+
+[0;32m✓ Secrets successfully injected into AWS SSM Parameter Store[0m
+
+[1;33mNext steps:[0m
+  1. Verify parameters: [0;32maws ssm get-parameters-by-path --path /zerotouch/prod --recursive --region ap-south-1[0m
+  2. ESO will automatically sync these secrets to Kubernetes
+  3. Check ExternalSecret status: [0;32mkubectl get externalsecret -A[0m
+
+[1;33m[8a/14] Applying patches before ArgoCD installation...[0m
+[0;34m╔══════════════════════════════════════════════════════════════╗[0m
+[0;34m║   Applying Preview/Kind Patches                             ║[0m
+[0;34m╚══════════════════════════════════════════════════════════════╝[0m
+
+[0;34mRunning: 03-patch-tolerations.sh[0m
+[1;33mNOTE: This script is now deprecated.[0m
+[0;34mControl plane toleration removal is now handled by Kustomize overlays in bootstrap/argocd/overlays/preview[0m
+[0;32m✓ No action needed - overlays will handle toleration patching automatically[0m
+
+[0;34mRunning: 04-exclude-local-path.sh[0m
+[0;34mExcluding local-path-provisioner from preview mode...[0m
+  [0;32m✓[0m Already disabled: 00-local-path-provisioner.yaml
+  [0;32m✓[0m No 00-* files found in base directory
+  [0;34mℹ[0m Kind clusters use built-in local-path storage
+  [0;34mℹ[0m Preview overlay excludes 00-* bootstrap files
+[0;32m✓ Local-path-provisioner excluded from preview mode[0m
+
+[0;34mRunning: 05-verify-storage-provisioner.sh[0m
+[0;34mVerifying local-path-provisioner for Kind cluster...[0m
+[0;34mContext: kind-zerotouch-preview[0m
+[0;34mChecking for Kind's built-in provisioner...[0m
+  [0;32m✓[0m Kind v1.34+ detected with built-in provisioner (storage class: standard)
+[0;34mChecking storage class configuration...[0m
+[0;34mCurrent storage classes:[0m
+NAME         PROVISIONER             DEFAULT
+local-path   rancher.io/local-path   false
+standard     rancher.io/local-path   true
+  [0;32m✓[0m local-path storage class exists (provisioner: rancher.io/local-path, default: false)
+[0;32m✓ Storage provisioner verification complete[0m
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+
+[0;34mRunning: 06-optimize-preview-resources.sh[0m
+[0;34mOptimizing resources for preview mode...[0m
+  [0;32m✓[0m Disabled NATS persistence (using memory-only mode)
+[0;34mVerifying overlay optimizations...[0m
+  [0;32m✓[0m Overlay optimizations verified (NATS, Kagent, KEDA)
+[0;32m✓ Preview resource optimizations applied[0m
+[0;34m  Estimated savings: ~400m CPU, ~500Mi memory[0m
+
+[0;34mRunning: 07-disable-cilium-for-kind.sh[0m
+[1;33mNOTE: This script is now deprecated.[0m
+[0;34mCilium exclusion is now handled by Kustomize overlays:[0m
+[0;34m  - bootstrap/argocd/overlays/preview/kustomization.yaml excludes cilium.yaml[0m
+[0;34m  - bootstrap/argocd/overlays/production includes Cilium in overlays/production/cilium/[0m
+[0;32m✓ No action needed - overlay structure handles Cilium exclusion[0m
+[0;34m  Kind clusters use kindnet CNI instead[0m
+
+[0;32m✓ All preview patches applied successfully[0m
+[0;34mVerifying patches in Kind container...[0m
+[0;34mNATS file in container:[0m
+26:                storageClassName: local-path
+[0;34mPreview overlay kustomization:[0m
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- ../../base
+
+# URL patching is handled by 01-patch-urls.sh script (applied before ArgoCD sync)
+
+patches:
+# 1. Specific Patch: Exclude Cilium from Foundation Config
+# This prevents ArgoCD from deploying platform/01-foundation/cilium.yaml
+- target:
+    kind: Application
+    name: foundation-config
+  patch: |-
+    apiVersion: argoproj.io/v1alpha1
+    kind: Application
+    metadata:
+      name: foundation-config
+    spec:
+      source:
+        directory:
+          exclude: 'cilium.yaml'
+
+# 2. Remove Control Plane Tolerations (Kind clusters don't have control-plane taints)
+- target:
+    kind: Application
+    name: external-secrets
+  patch: |-
+    apiVersion: argoproj.io/v1alpha1
+    kind: Application
+    metadata:
+      name: external-secrets
+    spec:
+      source:
+        helm:
+          values: |
+            installCRDs: true
+            webhook:
+              create: true
+
+- target:
+    kind: Application
+    name: crossplane-operator
+  patch: |-
+    apiVersion: argoproj.io/v1alpha1
+    kind: Application
+    metadata:
+      name: crossplane-operator
+    spec:
+      source:
+        helm:
+          values: |
+            # Allow Crossplane to run without control plane tolerations
+            tolerations: []
+            args:
+              - --enable-composition-revisions
+
+- target:
+    kind: Application
+    name: keda
+  patch: |-
+    apiVersion: argoproj.io/v1alpha1
+    kind: Application
+    metadata:
+      name: keda
+    spec:
+      source:
+        helm:
+          values: |
+            operator:
+              logLevel: info
+            # Remove control plane tolerations for Kind
+            tolerations: []
+
+# 3. Optimize Resources for Preview Mode
+- target:
+    kind: Application
+    name: nats
+  patch: |-
+    apiVersion: argoproj.io/v1alpha1
+    kind: Application
+    metadata:
+      name: nats
+    spec:
+      source:
+        helm:
+          values: |
+            container:
+              resources:
+                limits:
+                  cpu: 250m
+                  memory: 512Mi
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+            config:
+              jetstream:
+                fileStore:
+                  enabled: false
+                memoryStore:
+                  enabled: true
+
+- target:
+    kind: Application
+    name: kagent
+  patch: |-
+    apiVersion: argoproj.io/v1alpha1
+    kind: Application
+    metadata:
+      name: kagent
+    spec:
+      source:
+        helm:
+          values: |
+            # Schedule kagent agents on worker nodes with intelligence workloads
+            agents:
+              nodeSelector: {}
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 250m
+                  memory: 512Mi
+            # Keep controller on control plane (lightweight)
+            controller:
+              nodeSelector: {}
+              resources:
+                requests:
+                  cpu: 25m
+                  memory: 64Mi
+                limits:
+                  cpu: 100m
+                  memory: 256Mi
+            # Disable kmcp controller - platform uses RemoteMCPServer (v1alpha2) instead of MCPServer (v1alpha1)
+            kmcp:
+              enabled: false[0;34mCilium status in container:[0m
+ls: cannot access '/repo/platform/01-foundation/cilium.yaml*': No such file or directory
+Cilium files not found
+[1;33m[8/14] Installing ArgoCD...[0m
+[0;32m[INFO][0m ════════════════════════════════════════════════════════
+[0;32m[INFO][0m ArgoCD Bootstrap Script
+[0;32m[INFO][0m ════════════════════════════════════════════════════════
+[0;34m==>[0m Checking prerequisites...
+[0;32m[INFO][0m ✓ kubectl configured and cluster accessible
+[0;32m[INFO][0m Cluster: kind-zerotouch-preview
+[0;32m[INFO][0m Nodes: 1
+[0;32m[INFO][0m 
+[0;34m==>[0m Step 1/5: Installing ArgoCD...
+[1;33m[WARN][0m ArgoCD namespace already exists
+[0;32m[INFO][0m Applying ArgoCD manifests for preview mode (Kind cluster, version: v3.2.0)...
+customresourcedefinition.apiextensions.k8s.io/applications.argoproj.io unchanged
+customresourcedefinition.apiextensions.k8s.io/applicationsets.argoproj.io unchanged
+customresourcedefinition.apiextensions.k8s.io/appprojects.argoproj.io unchanged
+serviceaccount/argocd-application-controller unchanged
+serviceaccount/argocd-applicationset-controller unchanged
+serviceaccount/argocd-dex-server unchanged
+serviceaccount/argocd-notifications-controller unchanged
+serviceaccount/argocd-redis unchanged
+serviceaccount/argocd-repo-server unchanged
+serviceaccount/argocd-server unchanged
+role.rbac.authorization.k8s.io/argocd-application-controller unchanged
+role.rbac.authorization.k8s.io/argocd-applicationset-controller unchanged
+role.rbac.authorization.k8s.io/argocd-dex-server unchanged
+role.rbac.authorization.k8s.io/argocd-notifications-controller unchanged
+role.rbac.authorization.k8s.io/argocd-redis unchanged
+role.rbac.authorization.k8s.io/argocd-server unchanged
+clusterrole.rbac.authorization.k8s.io/argocd-application-controller unchanged
+clusterrole.rbac.authorization.k8s.io/argocd-applicationset-controller unchanged
+clusterrole.rbac.authorization.k8s.io/argocd-server unchanged
+rolebinding.rbac.authorization.k8s.io/argocd-application-controller unchanged
+rolebinding.rbac.authorization.k8s.io/argocd-applicationset-controller unchanged
+rolebinding.rbac.authorization.k8s.io/argocd-dex-server unchanged
+rolebinding.rbac.authorization.k8s.io/argocd-notifications-controller unchanged
+rolebinding.rbac.authorization.k8s.io/argocd-redis unchanged
+rolebinding.rbac.authorization.k8s.io/argocd-server unchanged
+clusterrolebinding.rbac.authorization.k8s.io/argocd-application-controller unchanged
+clusterrolebinding.rbac.authorization.k8s.io/argocd-applicationset-controller unchanged
+clusterrolebinding.rbac.authorization.k8s.io/argocd-server unchanged
+configmap/argocd-cm unchanged
+configmap/argocd-cmd-params-cm unchanged
+configmap/argocd-gpg-keys-cm unchanged
+configmap/argocd-notifications-cm unchanged
+configmap/argocd-rbac-cm unchanged
+configmap/argocd-ssh-known-hosts-cm unchanged
+configmap/argocd-tls-certs-cm unchanged
+secret/argocd-notifications-secret unchanged
+secret/argocd-secret unchanged
+service/argocd-applicationset-controller unchanged
+service/argocd-dex-server unchanged
+service/argocd-metrics unchanged
+service/argocd-notifications-controller-metrics unchanged
+service/argocd-redis unchanged
+service/argocd-repo-server unchanged
+service/argocd-server unchanged
+service/argocd-server-metrics unchanged
+deployment.apps/argocd-applicationset-controller unchanged
+deployment.apps/argocd-dex-server unchanged
+deployment.apps/argocd-notifications-controller unchanged
+deployment.apps/argocd-redis unchanged
+deployment.apps/argocd-repo-server unchanged
+deployment.apps/argocd-server unchanged
+statefulset.apps/argocd-application-controller unchanged
+networkpolicy.networking.k8s.io/argocd-application-controller-network-policy configured
+networkpolicy.networking.k8s.io/argocd-applicationset-controller-network-policy unchanged
+networkpolicy.networking.k8s.io/argocd-dex-server-network-policy unchanged
+networkpolicy.networking.k8s.io/argocd-notifications-controller-network-policy unchanged
+networkpolicy.networking.k8s.io/argocd-redis-network-policy unchanged
+networkpolicy.networking.k8s.io/argocd-repo-server-network-policy configured
+networkpolicy.networking.k8s.io/argocd-server-network-policy unchanged
+[0;32m[INFO][0m ✓ ArgoCD manifests applied successfully
+[0;32m[INFO][0m 
+[0;34m==>[0m Step 2/5: Waiting for ArgoCD to be ready...
+[0;34m╔══════════════════════════════════════════════════════════════╗[0m
+[0;34m║   Waiting for ArgoCD Pods to be Ready                       ║[0m
+[0;34m╚══════════════════════════════════════════════════════════════╝[0m
+
+[0;34m⏳ Waiting for ArgoCD pods to be ready (timeout: 300s)...[0m
+[0;34mNamespace: argocd[0m
+
+[0;34m=== Checking ArgoCD pods (0s / 300s) ===[0m
+[0;34mArgoCD pods: 7/7 ready[0m
+
+[0;32m✓ All ArgoCD pods are ready![0m
+
+[0;34mPod Status:[0m
+NAME                                                READY   STATUS    RESTARTS      AGE   IP            NODE                              NOMINATED NODE   READINESS GATES
+argocd-application-controller-0                     1/1     Running   0             10h   10.244.0.2    zerotouch-preview-control-plane   <none>           <none>
+argocd-applicationset-controller-5468f5bc49-9x7hg   1/1     Running   0             10h   10.244.0.3    zerotouch-preview-control-plane   <none>           <none>
+argocd-dex-server-5d4d47bcc4-hwpcc                  1/1     Running   1 (10h ago)   10h   10.244.0.4    zerotouch-preview-control-plane   <none>           <none>
+argocd-notifications-controller-ddc8fdf8-jq97l      1/1     Running   0             10h   10.244.0.10   zerotouch-preview-control-plane   <none>           <none>
+argocd-redis-66bbcf856f-xhr2w                       1/1     Running   0             10h   10.244.0.11   zerotouch-preview-control-plane   <none>           <none>
+argocd-repo-server-67fbd8568-zqhns                  1/1     Running   0             10h   10.244.0.8    zerotouch-preview-control-plane   <none>           <none>
+argocd-server-644f7bcf6f-sxsxh                      1/1     Running   0             10h   10.244.0.7    zerotouch-preview-control-plane   <none>           <none>
+
+[0;34m╔══════════════════════════════════════════════════════════════╗[0m
+[0;34m║   Waiting for ArgoCD Repo Server to be Responsive           ║[0m
+[0;34m╚══════════════════════════════════════════════════════════════╝[0m
+
+[0;34m⏳ Waiting for ArgoCD repo server to be responsive (timeout: 120s)...[0m
+[0;34mNamespace: argocd[0m
+
+[0;34m=== Checking repo server connectivity (0s / 120s) ===[0m
+[0;34mTesting repo server connectivity on port 8081...[0m
+[0;32m✓ Repo server is responsive on port 8081[0m
+[0;34mTesting repo server health endpoint on port 8084...[0m
+[0;32m✓ Repo server health endpoint is responsive[0m
+[0;34mValidating ArgoCD functionality...[0m
+[0;32m✓ ArgoCD API is functional[0m
+
+[0;32m✓ ArgoCD repo server is ready and responsive![0m
+
+[0;32m[INFO][0m ✓ ArgoCD is ready
+[0;32m[INFO][0m 
+[0;34m==>[0m Step 2.5/6: Granting ArgoCD cluster-admin permissions...
+[0;32m[INFO][0m Applying cluster-admin RBAC patch...
+clusterrolebinding.rbac.authorization.k8s.io/argocd-application-controller-cluster-admin unchanged
+[0;32m[INFO][0m ✓ ArgoCD has cluster-admin permissions (required for namespace creation)
+[0;32m[INFO][0m 
+[0;34m==>[0m Step 3/7: Configuring repository credentials...
+[1;33m[WARN][0m Repository credentials already exist, skipping...
+[0;32m[INFO][0m 
+[0;34m==>[0m Step 4/7: Retrieving ArgoCD credentials...
+[0;32m[INFO][0m ✓ ArgoCD credentials retrieved
+
+[0;32m[INFO][0m ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[0;32m[INFO][0m ArgoCD Login Credentials:
+  [1;33mUsername:[0m admin
+  [1;33mPassword:[0m VA48DC-hEvYWYFGd
+[0;32m[INFO][0m ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[0;32m[INFO][0m 
+[0;34m==>[0m Step 5/7: Deploying platform via Kustomize overlay...
+[0;32m[INFO][0m Applying PREVIEW configuration (No Cilium, Local URLs)...
+[0;32m[INFO][0m ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[0;32m[INFO][0m DEBUG: Verifying overlay configuration
+[0;32m[INFO][0m ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[0;32m[INFO][0m Using overlay: bootstrap/argocd/overlays/preview
+[0;32m[INFO][0m Testing kustomization build...
+[0;32m[INFO][0m   Generated 10 Application resources
+[0;32m[INFO][0m   Local file URLs: 0
+0
+[0;32m[INFO][0m   Cilium exclusions: 1
+[0;32m[INFO][0m ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[0;32m[INFO][0m Applying root application...
+application.argoproj.io/platform-bootstrap serverside-applied
+[0;32m[INFO][0m ✓ Platform definitions applied
+[0;32m[INFO][0m 
+[0;34m==>[0m Step 6/7: Waiting for initial sync...
+[0;32m[INFO][0m Checking ArgoCD applications...
+NAME                  SYNC STATUS   HEALTH STATUS
+apis                  Synced        Healthy
+cnpg                  Synced        Healthy
+crossplane-operator   Synced        Healthy
+databases             Synced        Healthy
+external-secrets      Synced        Healthy
+foundation-config     Synced        Healthy
+intelligence          Synced        Healthy
+kagent                Synced        Healthy
+keda                  Synced        Healthy
+nats                  Synced        Healthy
+platform-bootstrap    Synced        Healthy
+[0;32m[INFO][0m 
+[0;32m[INFO][0m ✓ GitOps deployment initiated!
+
+\033[0;32m════════════════════════════════════════════════════════\033[0m
+\033[0;32m✓ ArgoCD Installation and Application Creation Completed!\033[0m
+\033[0;32m════════════════════════════════════════════════════════\033[0m
+
+\033[1;33mWhat's Happening Now:\033[0m
+- ArgoCD applications have been created but are still syncing
+- Applications may show "Unknown" status initially - this is normal
+- Foundation layer (Cilium, Crossplane, KEDA, Kagent) will deploy first
+- Intelligence layer (Qdrant, docs-mcp, Librarian Agent) will deploy next
+- Observability and APIs layers are DISABLED (as configured)
+
+\033[1;33m⚠️  Note: Applications are NOT yet synced - use the monitoring commands below\033[0m
+
+\033[1;33mMonitor Deployment:\033[0m
+
+1. \033[0;34mWatch ArgoCD applications:\033[0m
+   kubectl get applications -n argocd -w
+
+2. \033[0;34mAccess ArgoCD UI:\033[0m
+   kubectl port-forward svc/argocd-server -n argocd 8080:443
+   
+   Then open: https://localhost:8080
+   Username: admin
+   Password: VA48DC-hEvYWYFGd
+
+3. \033[0;34mCheck specific layers:\033[0m
+   # Foundation layer
+   kubectl get pods -n kube-system
+   kubectl get pods -n crossplane-system
+   kubectl get pods -n kagent
+   
+   # Intelligence layer
+   kubectl get pods -n intelligence
+
+4. \033[0;34mView ArgoCD sync status:\033[0m
+   kubectl get applications -n argocd
+   
+   # Expected applications:
+   # - platform-root (root app-of-apps)
+   # - foundation
+   # - intelligence
+
+\033[1;33mTroubleshooting:\033[0m
+- If applications show "OutOfSync", they may be syncing
+- If applications show "Degraded", check pod status
+- View application details: kubectl describe application <name> -n argocd
+- View ArgoCD logs: kubectl logs -n argocd -l app.kubernetes.io/name=argocd-server
+
+\033[1;33mNext Steps:\033[0m
+1. Wait 5-10 minutes for all components to sync and become healthy
+2. Verify foundation layer is running
+3. Verify intelligence layer components are deployed
+4. Create required secrets (GitHub token, OpenAI key) for intelligence layer
+
+\033[0;32mDocumentation:\033[0m
+- ArgoCD: https://argo-cd.readthedocs.io/
+- Platform walkthrough: See walkthrough.md artifact
+
+[1;33m[9/14] Waiting for platform-bootstrap...[0m
+[0;34m╔══════════════════════════════════════════════════════════════╗[0m
+[0;34m║   Waiting for Platform Bootstrap                            ║[0m
+[0;34m╚══════════════════════════════════════════════════════════════╝[0m
+
+[0;34m⏳ Waiting for platform-bootstrap to sync (timeout: 5 minutes)...[0m
+[0;34mplatform-bootstrap found: Synced / Healthy[0m
+[0;32m✓ platform-bootstrap synced successfully[0m
+
+[1;33m[10/14] Verifying ESO...[0m
+[0;34m╔══════════════════════════════════════════════════════════════╗[0m
+[0;34m║   Verifying External Secrets Operator                       ║[0m
+[0;34m╚══════════════════════════════════════════════════════════════╝[0m
+
+[0;34mStep 1: Checking ESO credentials...[0m
+[0;32m✓ ESO credentials found[0m
+
+[0;34mStep 2: Waiting for ClusterSecretStore to be valid...[0m
+[0;32m✓ ClusterSecretStore 'aws-parameter-store' is valid[0m
+
+[0;34mStep 3: Force re-syncing all ExternalSecrets...[0m
+[0;34m   Found 4 ExternalSecrets[0m
+externalsecret.external-secrets.io/deepagents-runtime-llm-keys annotated
+   [0;32m✓[0m Triggered: intelligence-deepagents/deepagents-runtime-llm-keys
+externalsecret.external-secrets.io/kagent-openai-es annotated
+   [0;32m✓[0m Triggered: intelligence-platform/kagent-openai-es
+externalsecret.external-secrets.io/kagent-openai-es annotated
+   [0;32m✓[0m Triggered: kagent/kagent-openai-es
+
+[0;34mStep 4: Waiting for ExternalSecrets to sync (max 100s)...[0m
+   [10s] Total: 4 | [0;32mSynced: 3[0m | [0;31mFailed: 0[0m | Pending: 1
+   [20s] Total: 4 | [0;32mSynced: 3[0m | [0;31mFailed: 0[0m | Pending: 1
+   [30s] Total: 4 | [0;32mSynced: 3[0m | [0;31mFailed: 0[0m | Pending: 1
+   [40s] Total: 4 | [0;32mSynced: 3[0m | [0;31mFailed: 0[0m | Pending: 1
+   [50s] Total: 4 | [0;32mSynced: 3[0m | [0;31mFailed: 0[0m | Pending: 1
+   [60s] Total: 4 | [0;32mSynced: 3[0m | [0;31mFailed: 0[0m | Pending: 1
+   [70s] Total: 4 | [0;32mSynced: 3[0m | [0;31mFailed: 0[0m | Pending: 1
+   [80s] Total: 4 | [0;32mSynced: 3[0m | [0;31mFailed: 0[0m | Pending: 1
+   [90s] Total: 4 | [0;32mSynced: 3[0m | [0;31mFailed: 0[0m | Pending: 1
+   [100s] Total: 4 | [0;32mSynced: 3[0m | [0;31mFailed: 0[0m | Pending: 1
+
+[1;33m⚠️  Timeout reached. Current ExternalSecret status:[0m
+NAMESPACE                 NAME                          STATUS         MESSAGE
+<none>                    aws-parameter-store           Valid          store validated
+intelligence-deepagents   deepagents-runtime-llm-keys   SecretSynced   Secret was synced
+intelligence-platform     kagent-openai-es              SecretSynced   Secret was synced
+kagent                    kagent-openai-es              SecretSynced   Secret was synced
+
+[0;32m✓ ESO verification complete[0m
+[1;33m[11/14] Verifying child applications...[0m
+[0;34m╔══════════════════════════════════════════════════════════════╗[0m
+[0;34m║   Verifying Child Applications                               ║[0m
+[0;34m╚══════════════════════════════════════════════════════════════╝[0m
+
+[0;34mVerifying child Applications...[0m
+[0;34mPreview mode detected - checking core applications only[0m
+[0;32m✓ All child Applications created[0m
+
+[1;33m[13/15] Waiting for all applications to be healthy...[0m
+[0;34m╔══════════════════════════════════════════════════════════════╗[0m
+[0;34m║   Waiting for All Applications to be Healthy                ║[0m
+[0;34m╚══════════════════════════════════════════════════════════════╝[0m
+
+[0;34mTimeout: 10 minutes[0m
+
+
+[0;32m✓ All 11 applications are Synced & Healthy[0m
+
+[1;33m[14/15] Waiting for platform services to be ready...[0m
+[0;34m╔══════════════════════════════════════════════════════════════╗[0m
+[0;34m║   Waiting for Platform Service Dependencies                 ║[0m
+[0;34m╚══════════════════════════════════════════════════════════════╝[0m
+
+[0;34mTimeout: 5 minutes[0m
+[0;34mMode: Preview (some services may be optional)[0m
+
+[0;34mCluster resource status:[0m
+  [1;33mNodes:[0m
+    NAME                              STATUS   ROLES           AGE   VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE                         KERNEL-VERSION     CONTAINER-RUNTIME
+    zerotouch-preview-control-plane   Ready    control-plane   10h   v1.27.3   172.18.0.2    <none>        Debian GNU/Linux 11 (bullseye)   6.12.54-linuxkit   containerd://1.7.1
+  [1;33mStorage classes:[0m
+    NAME                 PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+    local-path           rancher.io/local-path   Delete          WaitForFirstConsumer   false                  10h
+    standard (default)   rancher.io/local-path   Delete          WaitForFirstConsumer   false                  10h
+  [1;33mNode resource usage:[0m
+
+[1;33m⏳ Checking services (0m 0s elapsed)...[0m
+   PostgreSQL: 1/1 ready
+   [0;32mDragonfly: XRD ready (instances created on-demand)[0m
+   NATS: 1/1 ready
+   External Secrets: Store=True, Secrets=3/3
+
+[0;32m✓ All platform services are ready![0m
+
+[0;32mArgoCD Credentials:[0m
+  Username: [1;33madmin[0m
+  Password: [1;33mVA48DC-hEvYWYFGd[0m
+
+[0;34m[15/15] Skipping repository credentials configuration (preview mode)[0m
+[0;34mSkipping final cluster validation (preview mode)[0m
+==========================================
+🔍 Cluster Validation Report
+==========================================
+
+📦 ArgoCD Applications Status:
+------------------------------------------
+  ✅ [0;32mapis[0m: Synced & Healthy
+  ✅ [0;32mcnpg[0m: Synced & Healthy
+  ✅ [0;32mcrossplane-operator[0m: Synced & Healthy
+  ✅ [0;32mdatabases[0m: Synced & Healthy
+  ✅ [0;32mexternal-secrets[0m: Synced & Healthy
+  ✅ [0;32mfoundation-config[0m: Synced & Healthy
+  ✅ [0;32mintelligence[0m: Synced & Healthy
+  ✅ [0;32mkagent[0m: Synced & Healthy
+  ✅ [0;32mkeda[0m: Synced & Healthy
+  ✅ [0;32mnats[0m: Synced & Healthy
+  ✅ [0;32mplatform-bootstrap[0m: Synced & Healthy
+
+Summary: 11 total applications
+
+🏢 Critical Namespaces:
+------------------------------------------
+  ✅ [0;32margocd[0m: 7/7 pods ready
+  ✅ [0;32mexternal-secrets[0m: 3/3 pods ready
+  ✅ [0;32mcrossplane-system[0m: 3/3 pods ready
+  ✅ [0;32mkeda[0m: 3/3 pods ready
+  ✅ [0;32mkagent[0m: 15/15 pods ready
+  ✅ [0;32mintelligence-platform[0m: 3/3 pods ready
+
+🔐 External Secrets Status:
+------------------------------------------
+  ✅ [0;32mnull/aws-parameter-store[0m: Synced
+  ✅ [0;32mintelligence-deepagents/deepagents-runtime-llm-keys[0m: Synced
+  ✅ [0;32mintelligence-platform/kagent-openai-es[0m: Synced
+  ✅ [0;32mkagent/kagent-openai-es[0m: Synced
+
+🗄️  ClusterSecretStore Status:
+------------------------------------------
+  ✅ [0;32maws-parameter-store[0m: Ready
+
+🔄 Checking for Configuration Drift:
+------------------------------------------
+  ✅ [0;32mNo configuration drift detected[0m
+
+==========================================
+✅ [0;32mVALIDATION PASSED[0m
+All applications Synced & Healthy
+
+[0;34m╔══════════════════════════════════════════════════════════════╗[0m
+[0;34m║             Bootstrap Complete!                              ║[0m
+[0;34m╚══════════════════════════════════════════════════════════════╝[0m
+
+[0;32m✓ Kind cluster created and configured[0m
+[0;32m✓ ArgoCD bootstrapped and managing platform[0m
+[0;32m✓ Platform validation complete[0m
+
+[1;33m📌 Preview Environment Ready:[0m
+   Cluster: [0;32mkind-zerotouch-preview[0m
+   Context: [0;32mkind-zerotouch-preview[0m
+
+[1;33m📌 Monitor Deployment:[0m
+   kubectl get applications -n argocd
+   kubectl get pods --all-namespaces
+
+[1;33m📌 Cleanup:[0m
+   kind delete cluster --name zerotouch-preview
+
+[0;34mPlatform ready for testing! 🚀[0m
+
+[0;32m[SUCCESS][0m Platform preview environment bootstrapped
+[0;34m[INFO][0m Building Docker image...
+================================================================================
+Building Docker Image
+================================================================================
+  Service:   deepagents-runtime
+  Mode:      test
+  Registry:  ghcr.io/arun4infra
+================================================================================
+[0;34m[INFO][0m Building Docker image for testing...
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            BuildKit is currently disabled; enable it by removing the DOCKER_BUILDKIT=0
+            environment-variable.
+
+Sending build context to Docker daemon  456.2MB
+Step 1/23 : FROM python:3.11-slim
+ ---> 7cd0079a9bd8
+Step 2/23 : ENV PYTHONUNBUFFERED=1     PYTHONDONTWRITEBYTECODE=1     PIP_NO_CACHE_DIR=1     PIP_DISABLE_PIP_VERSION_CHECK=1
+ ---> Using cache
+ ---> 940491e61910
+Step 3/23 : RUN groupadd -r appuser && useradd -r -g appuser appuser
+ ---> Using cache
+ ---> 902ae98c365a
+Step 4/23 : WORKDIR /app
+ ---> Using cache
+ ---> dc37329a1eeb
+Step 5/23 : RUN pip install --no-cache-dir uv
+ ---> Using cache
+ ---> 229a5efd85a9
+Step 6/23 : COPY pyproject.toml ./pyproject.toml
+ ---> Using cache
+ ---> bfb4435807f1
+Step 7/23 : COPY README.md ./README.md
+ ---> Using cache
+ ---> 07b15a1f4584
+Step 8/23 : COPY api/ ./api/
+ ---> Using cache
+ ---> 690420cb7312
+Step 9/23 : COPY core/ ./core/
+ ---> Using cache
+ ---> ff7a7caa1bf2
+Step 10/23 : COPY services/ ./services/
+ ---> Using cache
+ ---> 86a196a7368c
+Step 11/23 : COPY models/ ./models/
+ ---> Using cache
+ ---> c3b7af34fa16
+Step 12/23 : COPY observability/ ./observability/
+ ---> Using cache
+ ---> 3e8982200cce
+Step 13/23 : COPY __init__.py ./__init__.py
+ ---> Using cache
+ ---> 6dabcb399913
+Step 14/23 : COPY migrations/ ./migrations/
+ ---> Using cache
+ ---> 3b5d1424df84
+Step 15/23 : COPY tests/ ./tests/
+ ---> 7c8dec0735a3
+Step 16/23 : COPY platform/ ./platform/
+ ---> eb4fcdbc0944
+Step 17/23 : COPY scripts/ ./scripts/
+ ---> 4b28b3d730d5
+Step 18/23 : RUN apt-get update && apt-get install -y --no-install-recommends     libpq5     libpq-dev     postgresql-client     curl     gcc     && uv pip install --system --no-cache -e ".[dev]"     && apt-get purge -y --auto-remove gcc libpq-dev     && rm -rf /var/lib/apt/lists/*
+ ---> Running in eb2592edcd65
+Hit:1 http://deb.debian.org/debian trixie InRelease
+Get:2 http://deb.debian.org/debian trixie-updates InRelease [47.3 kB]
+Get:3 http://deb.debian.org/debian-security trixie-security InRelease [43.4 kB]
+Get:4 http://deb.debian.org/debian trixie/main arm64 Packages [9607 kB]
+Get:5 http://deb.debian.org/debian trixie-updates/main arm64 Packages [5404 B]
+Get:6 http://deb.debian.org/debian-security trixie-security/main arm64 Packages [87.5 kB]
+Fetched 9790 kB in 3s (3386 kB/s)
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  binutils binutils-aarch64-linux-gnu binutils-common cpp cpp-14
+  cpp-14-aarch64-linux-gnu cpp-aarch64-linux-gnu gcc-14
+  gcc-14-aarch64-linux-gnu gcc-aarch64-linux-gnu libasan8 libatomic1
+  libbinutils libbrotli1 libcc1-0 libcom-err2 libctf-nobfd0 libctf0
+  libcurl4t64 libgcc-14-dev libgdbm-compat4t64 libgnutls30t64 libgomp1
+  libgprofng0 libgssapi-krb5-2 libhwasan0 libidn2-0 libisl23 libitm1
+  libjansson4 libk5crypto3 libkeyutils1 libkrb5-3 libkrb5support0 libldap2
+  liblsan0 libmpc3 libmpfr6 libnghttp2-14 libnghttp3-9 libp11-kit0 libperl5.40
+  libpsl5t64 librtmp1 libsasl2-2 libsasl2-modules-db libsframe1 libssh2-1t64
+  libssl-dev libtasn1-6 libtsan2 libubsan1 libunistring5 perl
+  perl-modules-5.40 postgresql-client-17 postgresql-client-common
+  sensible-utils
+Suggested packages:
+  binutils-doc gprofng-gui binutils-gold cpp-doc gcc-14-locales cpp-14-doc
+  gcc-multilib make manpages-dev autoconf automake libtool flex bison gdb
+  gcc-doc gcc-14-doc gdb-aarch64-linux-gnu gnutls-bin krb5-doc krb5-user
+  postgresql-doc-17 libssl-doc perl-doc libterm-readline-gnu-perl
+  | libterm-readline-perl-perl libtap-harness-archive-perl postgresql-17
+Recommended packages:
+  bash-completion libc6-dev | libc-dev libc6-dev libc-dev krb5-locales
+  libldap-common publicsuffix libsasl2-modules
+The following NEW packages will be installed:
+  binutils binutils-aarch64-linux-gnu binutils-common cpp cpp-14
+  cpp-14-aarch64-linux-gnu cpp-aarch64-linux-gnu curl gcc gcc-14
+  gcc-14-aarch64-linux-gnu gcc-aarch64-linux-gnu libasan8 libatomic1
+  libbinutils libbrotli1 libcc1-0 libcom-err2 libctf-nobfd0 libctf0
+  libcurl4t64 libgcc-14-dev libgdbm-compat4t64 libgnutls30t64 libgomp1
+  libgprofng0 libgssapi-krb5-2 libhwasan0 libidn2-0 libisl23 libitm1
+  libjansson4 libk5crypto3 libkeyutils1 libkrb5-3 libkrb5support0 libldap2
+  liblsan0 libmpc3 libmpfr6 libnghttp2-14 libnghttp3-9 libp11-kit0 libperl5.40
+  libpq-dev libpq5 libpsl5t64 librtmp1 libsasl2-2 libsasl2-modules-db
+  libsframe1 libssh2-1t64 libssl-dev libtasn1-6 libtsan2 libubsan1
+  libunistring5 perl perl-modules-5.40 postgresql-client postgresql-client-17
+  postgresql-client-common sensible-utils
+0 upgraded, 63 newly installed, 0 to remove and 0 not upgraded.
+Need to get 63.1 MB of archives.
+After this operation, 282 MB of additional disk space will be used.
+Get:1 http://deb.debian.org/debian trixie/main arm64 sensible-utils all 0.0.25 [25.0 kB]
+Get:2 http://deb.debian.org/debian trixie/main arm64 perl-modules-5.40 all 5.40.1-6 [3019 kB]
+Get:3 http://deb.debian.org/debian trixie/main arm64 libgdbm-compat4t64 arm64 1.24-2 [50.3 kB]
+Get:4 http://deb.debian.org/debian trixie/main arm64 libperl5.40 arm64 5.40.1-6 [4142 kB]
+Get:5 http://deb.debian.org/debian trixie/main arm64 perl arm64 5.40.1-6 [267 kB]
+Get:6 http://deb.debian.org/debian trixie/main arm64 libsframe1 arm64 2.44-3 [77.8 kB]
+Get:7 http://deb.debian.org/debian trixie/main arm64 binutils-common arm64 2.44-3 [2509 kB]
+Get:8 http://deb.debian.org/debian trixie/main arm64 libbinutils arm64 2.44-3 [660 kB]
+Get:9 http://deb.debian.org/debian trixie/main arm64 libgprofng0 arm64 2.44-3 [668 kB]
+Get:10 http://deb.debian.org/debian trixie/main arm64 libctf-nobfd0 arm64 2.44-3 [152 kB]
+Get:11 http://deb.debian.org/debian trixie/main arm64 libctf0 arm64 2.44-3 [84.2 kB]
+Get:12 http://deb.debian.org/debian trixie/main arm64 libjansson4 arm64 2.14-2+b3 [39.2 kB]
+Get:13 http://deb.debian.org/debian trixie/main arm64 binutils-aarch64-linux-gnu arm64 2.44-3 [820 kB]
+Get:14 http://deb.debian.org/debian trixie/main arm64 binutils arm64 2.44-3 [262 kB]
+Get:15 http://deb.debian.org/debian trixie/main arm64 libisl23 arm64 0.27-1 [601 kB]
+Get:16 http://deb.debian.org/debian trixie/main arm64 libmpfr6 arm64 4.2.2-1 [685 kB]
+Get:17 http://deb.debian.org/debian trixie/main arm64 libmpc3 arm64 1.3.1-1+b3 [50.5 kB]
+Get:18 http://deb.debian.org/debian trixie/main arm64 cpp-14-aarch64-linux-gnu arm64 14.2.0-19 [9169 kB]
+Get:19 http://deb.debian.org/debian trixie/main arm64 cpp-14 arm64 14.2.0-19 [1276 B]
+Get:20 http://deb.debian.org/debian trixie/main arm64 cpp-aarch64-linux-gnu arm64 4:14.2.0-1 [4832 B]
+Get:21 http://deb.debian.org/debian trixie/main arm64 cpp arm64 4:14.2.0-1 [1568 B]
+Get:22 http://deb.debian.org/debian trixie/main arm64 libbrotli1 arm64 1.1.0-2+b7 [308 kB]
+Get:23 http://deb.debian.org/debian trixie/main arm64 libkrb5support0 arm64 1.21.3-5 [32.4 kB]
+Get:24 http://deb.debian.org/debian trixie/main arm64 libcom-err2 arm64 1.47.2-3+b3 [24.9 kB]
+Get:25 http://deb.debian.org/debian trixie/main arm64 libk5crypto3 arm64 1.21.3-5 [81.2 kB]
+Get:26 http://deb.debian.org/debian trixie/main arm64 libkeyutils1 arm64 1.6.3-6 [9716 B]
+Get:27 http://deb.debian.org/debian trixie/main arm64 libkrb5-3 arm64 1.21.3-5 [308 kB]
+Get:28 http://deb.debian.org/debian trixie/main arm64 libgssapi-krb5-2 arm64 1.21.3-5 [127 kB]
+Get:29 http://deb.debian.org/debian trixie/main arm64 libunistring5 arm64 1.3-2 [453 kB]
+Get:30 http://deb.debian.org/debian trixie/main arm64 libidn2-0 arm64 2.3.8-2 [107 kB]
+Get:31 http://deb.debian.org/debian trixie/main arm64 libsasl2-modules-db arm64 2.1.28+dfsg1-9 [20.1 kB]
+Get:32 http://deb.debian.org/debian trixie/main arm64 libsasl2-2 arm64 2.1.28+dfsg1-9 [55.6 kB]
+Get:33 http://deb.debian.org/debian trixie/main arm64 libldap2 arm64 2.6.10+dfsg-1 [179 kB]
+Get:34 http://deb.debian.org/debian trixie/main arm64 libnghttp2-14 arm64 1.64.0-1.1 [71.4 kB]
+Get:35 http://deb.debian.org/debian trixie/main arm64 libnghttp3-9 arm64 1.8.0-1 [63.2 kB]
+Get:36 http://deb.debian.org/debian trixie/main arm64 libpsl5t64 arm64 0.21.2-1.1+b1 [57.1 kB]
+Get:37 http://deb.debian.org/debian trixie/main arm64 libp11-kit0 arm64 0.25.5-3 [409 kB]
+Get:38 http://deb.debian.org/debian trixie/main arm64 libtasn1-6 arm64 4.20.0-2 [47.3 kB]
+Get:39 http://deb.debian.org/debian trixie/main arm64 libgnutls30t64 arm64 3.8.9-3 [1375 kB]
+Get:40 http://deb.debian.org/debian trixie/main arm64 librtmp1 arm64 2.4+20151223.gitfa8646d.1-2+b5 [56.8 kB]
+Get:41 http://deb.debian.org/debian trixie/main arm64 libssh2-1t64 arm64 1.11.1-1 [235 kB]
+Get:42 http://deb.debian.org/debian trixie/main arm64 libcurl4t64 arm64 8.14.1-2+deb13u2 [359 kB]
+Get:43 http://deb.debian.org/debian trixie/main arm64 curl arm64 8.14.1-2+deb13u2 [262 kB]
+Get:44 http://deb.debian.org/debian trixie/main arm64 libcc1-0 arm64 14.2.0-19 [42.2 kB]
+Get:45 http://deb.debian.org/debian trixie/main arm64 libgomp1 arm64 14.2.0-19 [124 kB]
+Get:46 http://deb.debian.org/debian trixie/main arm64 libitm1 arm64 14.2.0-19 [24.2 kB]
+Get:47 http://deb.debian.org/debian trixie/main arm64 libatomic1 arm64 14.2.0-19 [10.1 kB]
+Get:48 http://deb.debian.org/debian trixie/main arm64 libasan8 arm64 14.2.0-19 [2578 kB]
+Get:49 http://deb.debian.org/debian trixie/main arm64 liblsan0 arm64 14.2.0-19 [1161 kB]
+Get:50 http://deb.debian.org/debian trixie/main arm64 libtsan2 arm64 14.2.0-19 [2383 kB]
+Get:51 http://deb.debian.org/debian trixie/main arm64 libubsan1 arm64 14.2.0-19 [1039 kB]
+Get:52 http://deb.debian.org/debian trixie/main arm64 libhwasan0 arm64 14.2.0-19 [1442 kB]
+Get:53 http://deb.debian.org/debian trixie/main arm64 libgcc-14-dev arm64 14.2.0-19 [2359 kB]
+Get:54 http://deb.debian.org/debian trixie/main arm64 gcc-14-aarch64-linux-gnu arm64 14.2.0-19 [17.7 MB]
+Get:55 http://deb.debian.org/debian trixie/main arm64 gcc-14 arm64 14.2.0-19 [529 kB]
+Get:56 http://deb.debian.org/debian trixie/main arm64 gcc-aarch64-linux-gnu arm64 4:14.2.0-1 [1440 B]
+Get:57 http://deb.debian.org/debian trixie/main arm64 gcc arm64 4:14.2.0-1 [5136 B]
+Get:58 http://deb.debian.org/debian trixie/main arm64 libpq5 arm64 17.6-0+deb13u1 [220 kB]
+Get:59 http://deb.debian.org/debian trixie/main arm64 libssl-dev arm64 3.5.4-1~deb13u1 [3392 kB]
+Get:60 http://deb.debian.org/debian trixie/main arm64 libpq-dev arm64 17.6-0+deb13u1 [147 kB]
+Get:61 http://deb.debian.org/debian trixie/main arm64 postgresql-client-common all 278 [47.1 kB]
+Get:62 http://deb.debian.org/debian trixie/main arm64 postgresql-client-17 arm64 17.6-0+deb13u1 [1978 kB]
+Get:63 http://deb.debian.org/debian trixie/main arm64 postgresql-client all 17+278 [14.0 kB]
+[91mdebconf: unable to initialize frontend: Dialog
+debconf: (TERM is not set, so the dialog frontend is not usable.)
+debconf: falling back to frontend: Readline
+[0m[91mdebconf: unable to initialize frontend: Readline
+debconf: (Can't locate Term/ReadLine.pm in @INC (you may need to install the Term::ReadLine module) (@INC entries checked: /etc/perl /usr/local/lib/aarch64-linux-gnu/perl/5.40.1 /usr/local/share/perl/5.40.1 /usr/lib/aarch64-linux-gnu/perl5/5.40 /usr/share/perl5 /usr/lib/aarch64-linux-gnu/perl-base /usr/lib/aarch64-linux-gnu/perl/5.40 /usr/share/perl/5.40 /usr/local/lib/site_perl) at /usr/share/perl5/Debconf/FrontEnd/Readline.pm line 8, <STDIN> line 63.)
+debconf: falling back to frontend: Teletype
+[0m[91mdebconf: unable to initialize frontend: Teletype
+debconf: (This frontend requires a controlling tty.)
+debconf: falling back to frontend: Noninteractive
+[0mFetched 63.1 MB in 13s (4715 kB/s)
+Selecting previously unselected package sensible-utils.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 5642 files and directories currently installed.)
+Preparing to unpack .../00-sensible-utils_0.0.25_all.deb ...
+Unpacking sensible-utils (0.0.25) ...
+Selecting previously unselected package perl-modules-5.40.
+Preparing to unpack .../01-perl-modules-5.40_5.40.1-6_all.deb ...
+Unpacking perl-modules-5.40 (5.40.1-6) ...
+Selecting previously unselected package libgdbm-compat4t64:arm64.
+Preparing to unpack .../02-libgdbm-compat4t64_1.24-2_arm64.deb ...
+Unpacking libgdbm-compat4t64:arm64 (1.24-2) ...
+Selecting previously unselected package libperl5.40:arm64.
+Preparing to unpack .../03-libperl5.40_5.40.1-6_arm64.deb ...
+Unpacking libperl5.40:arm64 (5.40.1-6) ...
+Selecting previously unselected package perl.
+Preparing to unpack .../04-perl_5.40.1-6_arm64.deb ...
+Unpacking perl (5.40.1-6) ...
+Selecting previously unselected package libsframe1:arm64.
+Preparing to unpack .../05-libsframe1_2.44-3_arm64.deb ...
+Unpacking libsframe1:arm64 (2.44-3) ...
+Selecting previously unselected package binutils-common:arm64.
+Preparing to unpack .../06-binutils-common_2.44-3_arm64.deb ...
+Unpacking binutils-common:arm64 (2.44-3) ...
+Selecting previously unselected package libbinutils:arm64.
+Preparing to unpack .../07-libbinutils_2.44-3_arm64.deb ...
+Unpacking libbinutils:arm64 (2.44-3) ...
+Selecting previously unselected package libgprofng0:arm64.
+Preparing to unpack .../08-libgprofng0_2.44-3_arm64.deb ...
+Unpacking libgprofng0:arm64 (2.44-3) ...
+Selecting previously unselected package libctf-nobfd0:arm64.
+Preparing to unpack .../09-libctf-nobfd0_2.44-3_arm64.deb ...
+Unpacking libctf-nobfd0:arm64 (2.44-3) ...
+Selecting previously unselected package libctf0:arm64.
+Preparing to unpack .../10-libctf0_2.44-3_arm64.deb ...
+Unpacking libctf0:arm64 (2.44-3) ...
+Selecting previously unselected package libjansson4:arm64.
+Preparing to unpack .../11-libjansson4_2.14-2+b3_arm64.deb ...
+Unpacking libjansson4:arm64 (2.14-2+b3) ...
+Selecting previously unselected package binutils-aarch64-linux-gnu.
+Preparing to unpack .../12-binutils-aarch64-linux-gnu_2.44-3_arm64.deb ...
+Unpacking binutils-aarch64-linux-gnu (2.44-3) ...
+Selecting previously unselected package binutils.
+Preparing to unpack .../13-binutils_2.44-3_arm64.deb ...
+Unpacking binutils (2.44-3) ...
+Selecting previously unselected package libisl23:arm64.
+Preparing to unpack .../14-libisl23_0.27-1_arm64.deb ...
+Unpacking libisl23:arm64 (0.27-1) ...
+Selecting previously unselected package libmpfr6:arm64.
+Preparing to unpack .../15-libmpfr6_4.2.2-1_arm64.deb ...
+Unpacking libmpfr6:arm64 (4.2.2-1) ...
+Selecting previously unselected package libmpc3:arm64.
+Preparing to unpack .../16-libmpc3_1.3.1-1+b3_arm64.deb ...
+Unpacking libmpc3:arm64 (1.3.1-1+b3) ...
+Selecting previously unselected package cpp-14-aarch64-linux-gnu.
+Preparing to unpack .../17-cpp-14-aarch64-linux-gnu_14.2.0-19_arm64.deb ...
+Unpacking cpp-14-aarch64-linux-gnu (14.2.0-19) ...
+Selecting previously unselected package cpp-14.
+Preparing to unpack .../18-cpp-14_14.2.0-19_arm64.deb ...
+Unpacking cpp-14 (14.2.0-19) ...
+Selecting previously unselected package cpp-aarch64-linux-gnu.
+Preparing to unpack .../19-cpp-aarch64-linux-gnu_4%3a14.2.0-1_arm64.deb ...
+Unpacking cpp-aarch64-linux-gnu (4:14.2.0-1) ...
+Selecting previously unselected package cpp.
+Preparing to unpack .../20-cpp_4%3a14.2.0-1_arm64.deb ...
+Unpacking cpp (4:14.2.0-1) ...
+Selecting previously unselected package libbrotli1:arm64.
+Preparing to unpack .../21-libbrotli1_1.1.0-2+b7_arm64.deb ...
+Unpacking libbrotli1:arm64 (1.1.0-2+b7) ...
+Selecting previously unselected package libkrb5support0:arm64.
+Preparing to unpack .../22-libkrb5support0_1.21.3-5_arm64.deb ...
+Unpacking libkrb5support0:arm64 (1.21.3-5) ...
+Selecting previously unselected package libcom-err2:arm64.
+Preparing to unpack .../23-libcom-err2_1.47.2-3+b3_arm64.deb ...
+Unpacking libcom-err2:arm64 (1.47.2-3+b3) ...
+Selecting previously unselected package libk5crypto3:arm64.
+Preparing to unpack .../24-libk5crypto3_1.21.3-5_arm64.deb ...
+Unpacking libk5crypto3:arm64 (1.21.3-5) ...
+Selecting previously unselected package libkeyutils1:arm64.
+Preparing to unpack .../25-libkeyutils1_1.6.3-6_arm64.deb ...
+Unpacking libkeyutils1:arm64 (1.6.3-6) ...
+Selecting previously unselected package libkrb5-3:arm64.
+Preparing to unpack .../26-libkrb5-3_1.21.3-5_arm64.deb ...
+Unpacking libkrb5-3:arm64 (1.21.3-5) ...
+Selecting previously unselected package libgssapi-krb5-2:arm64.
+Preparing to unpack .../27-libgssapi-krb5-2_1.21.3-5_arm64.deb ...
+Unpacking libgssapi-krb5-2:arm64 (1.21.3-5) ...
+Selecting previously unselected package libunistring5:arm64.
+Preparing to unpack .../28-libunistring5_1.3-2_arm64.deb ...
+Unpacking libunistring5:arm64 (1.3-2) ...
+Selecting previously unselected package libidn2-0:arm64.
+Preparing to unpack .../29-libidn2-0_2.3.8-2_arm64.deb ...
+Unpacking libidn2-0:arm64 (2.3.8-2) ...
+Selecting previously unselected package libsasl2-modules-db:arm64.
+Preparing to unpack .../30-libsasl2-modules-db_2.1.28+dfsg1-9_arm64.deb ...
+Unpacking libsasl2-modules-db:arm64 (2.1.28+dfsg1-9) ...
+Selecting previously unselected package libsasl2-2:arm64.
+Preparing to unpack .../31-libsasl2-2_2.1.28+dfsg1-9_arm64.deb ...
+Unpacking libsasl2-2:arm64 (2.1.28+dfsg1-9) ...
+Selecting previously unselected package libldap2:arm64.
+Preparing to unpack .../32-libldap2_2.6.10+dfsg-1_arm64.deb ...
+Unpacking libldap2:arm64 (2.6.10+dfsg-1) ...
+Selecting previously unselected package libnghttp2-14:arm64.
+Preparing to unpack .../33-libnghttp2-14_1.64.0-1.1_arm64.deb ...
+Unpacking libnghttp2-14:arm64 (1.64.0-1.1) ...
+Selecting previously unselected package libnghttp3-9:arm64.
+Preparing to unpack .../34-libnghttp3-9_1.8.0-1_arm64.deb ...
+Unpacking libnghttp3-9:arm64 (1.8.0-1) ...
+Selecting previously unselected package libpsl5t64:arm64.
+Preparing to unpack .../35-libpsl5t64_0.21.2-1.1+b1_arm64.deb ...
+Unpacking libpsl5t64:arm64 (0.21.2-1.1+b1) ...
+Selecting previously unselected package libp11-kit0:arm64.
+Preparing to unpack .../36-libp11-kit0_0.25.5-3_arm64.deb ...
+Unpacking libp11-kit0:arm64 (0.25.5-3) ...
+Selecting previously unselected package libtasn1-6:arm64.
+Preparing to unpack .../37-libtasn1-6_4.20.0-2_arm64.deb ...
+Unpacking libtasn1-6:arm64 (4.20.0-2) ...
+Selecting previously unselected package libgnutls30t64:arm64.
+Preparing to unpack .../38-libgnutls30t64_3.8.9-3_arm64.deb ...
+Unpacking libgnutls30t64:arm64 (3.8.9-3) ...
+Selecting previously unselected package librtmp1:arm64.
+Preparing to unpack .../39-librtmp1_2.4+20151223.gitfa8646d.1-2+b5_arm64.deb ...
+Unpacking librtmp1:arm64 (2.4+20151223.gitfa8646d.1-2+b5) ...
+Selecting previously unselected package libssh2-1t64:arm64.
+Preparing to unpack .../40-libssh2-1t64_1.11.1-1_arm64.deb ...
+Unpacking libssh2-1t64:arm64 (1.11.1-1) ...
+Selecting previously unselected package libcurl4t64:arm64.
+Preparing to unpack .../41-libcurl4t64_8.14.1-2+deb13u2_arm64.deb ...
+Unpacking libcurl4t64:arm64 (8.14.1-2+deb13u2) ...
+Selecting previously unselected package curl.
+Preparing to unpack .../42-curl_8.14.1-2+deb13u2_arm64.deb ...
+Unpacking curl (8.14.1-2+deb13u2) ...
+Selecting previously unselected package libcc1-0:arm64.
+Preparing to unpack .../43-libcc1-0_14.2.0-19_arm64.deb ...
+Unpacking libcc1-0:arm64 (14.2.0-19) ...
+Selecting previously unselected package libgomp1:arm64.
+Preparing to unpack .../44-libgomp1_14.2.0-19_arm64.deb ...
+Unpacking libgomp1:arm64 (14.2.0-19) ...
+Selecting previously unselected package libitm1:arm64.
+Preparing to unpack .../45-libitm1_14.2.0-19_arm64.deb ...
+Unpacking libitm1:arm64 (14.2.0-19) ...
+Selecting previously unselected package libatomic1:arm64.
+Preparing to unpack .../46-libatomic1_14.2.0-19_arm64.deb ...
+Unpacking libatomic1:arm64 (14.2.0-19) ...
+Selecting previously unselected package libasan8:arm64.
+Preparing to unpack .../47-libasan8_14.2.0-19_arm64.deb ...
+Unpacking libasan8:arm64 (14.2.0-19) ...
+Selecting previously unselected package liblsan0:arm64.
+Preparing to unpack .../48-liblsan0_14.2.0-19_arm64.deb ...
+Unpacking liblsan0:arm64 (14.2.0-19) ...
+Selecting previously unselected package libtsan2:arm64.
+Preparing to unpack .../49-libtsan2_14.2.0-19_arm64.deb ...
+Unpacking libtsan2:arm64 (14.2.0-19) ...
+Selecting previously unselected package libubsan1:arm64.
+Preparing to unpack .../50-libubsan1_14.2.0-19_arm64.deb ...
+Unpacking libubsan1:arm64 (14.2.0-19) ...
+Selecting previously unselected package libhwasan0:arm64.
+Preparing to unpack .../51-libhwasan0_14.2.0-19_arm64.deb ...
+Unpacking libhwasan0:arm64 (14.2.0-19) ...
+Selecting previously unselected package libgcc-14-dev:arm64.
+Preparing to unpack .../52-libgcc-14-dev_14.2.0-19_arm64.deb ...
+Unpacking libgcc-14-dev:arm64 (14.2.0-19) ...
+Selecting previously unselected package gcc-14-aarch64-linux-gnu.
+Preparing to unpack .../53-gcc-14-aarch64-linux-gnu_14.2.0-19_arm64.deb ...
+Unpacking gcc-14-aarch64-linux-gnu (14.2.0-19) ...
+Selecting previously unselected package gcc-14.
+Preparing to unpack .../54-gcc-14_14.2.0-19_arm64.deb ...
+Unpacking gcc-14 (14.2.0-19) ...
+Selecting previously unselected package gcc-aarch64-linux-gnu.
+Preparing to unpack .../55-gcc-aarch64-linux-gnu_4%3a14.2.0-1_arm64.deb ...
+Unpacking gcc-aarch64-linux-gnu (4:14.2.0-1) ...
+Selecting previously unselected package gcc.
+Preparing to unpack .../56-gcc_4%3a14.2.0-1_arm64.deb ...
+Unpacking gcc (4:14.2.0-1) ...
+Selecting previously unselected package libpq5:arm64.
+Preparing to unpack .../57-libpq5_17.6-0+deb13u1_arm64.deb ...
+Unpacking libpq5:arm64 (17.6-0+deb13u1) ...
+Selecting previously unselected package libssl-dev:arm64.
+Preparing to unpack .../58-libssl-dev_3.5.4-1~deb13u1_arm64.deb ...
+Unpacking libssl-dev:arm64 (3.5.4-1~deb13u1) ...
+Selecting previously unselected package libpq-dev.
+Preparing to unpack .../59-libpq-dev_17.6-0+deb13u1_arm64.deb ...
+Unpacking libpq-dev (17.6-0+deb13u1) ...
+Selecting previously unselected package postgresql-client-common.
+Preparing to unpack .../60-postgresql-client-common_278_all.deb ...
+Unpacking postgresql-client-common (278) ...
+Selecting previously unselected package postgresql-client-17.
+Preparing to unpack .../61-postgresql-client-17_17.6-0+deb13u1_arm64.deb ...
+Unpacking postgresql-client-17 (17.6-0+deb13u1) ...
+Selecting previously unselected package postgresql-client.
+Preparing to unpack .../62-postgresql-client_17+278_all.deb ...
+Unpacking postgresql-client (17+278) ...
+Setting up libkeyutils1:arm64 (1.6.3-6) ...
+Setting up libgdbm-compat4t64:arm64 (1.24-2) ...
+Setting up libbrotli1:arm64 (1.1.0-2+b7) ...
+Setting up binutils-common:arm64 (2.44-3) ...
+Setting up libnghttp2-14:arm64 (1.64.0-1.1) ...
+Setting up libctf-nobfd0:arm64 (2.44-3) ...
+Setting up libcom-err2:arm64 (1.47.2-3+b3) ...
+Setting up libgomp1:arm64 (14.2.0-19) ...
+Setting up libsframe1:arm64 (2.44-3) ...
+Setting up libjansson4:arm64 (2.14-2+b3) ...
+Setting up libkrb5support0:arm64 (1.21.3-5) ...
+Setting up libsasl2-modules-db:arm64 (2.1.28+dfsg1-9) ...
+Setting up libmpfr6:arm64 (4.2.2-1) ...
+Setting up libp11-kit0:arm64 (0.25.5-3) ...
+Setting up libunistring5:arm64 (1.3-2) ...
+Setting up libssl-dev:arm64 (3.5.4-1~deb13u1) ...
+Setting up libmpc3:arm64 (1.3.1-1+b3) ...
+Setting up libatomic1:arm64 (14.2.0-19) ...
+Setting up libk5crypto3:arm64 (1.21.3-5) ...
+Setting up libsasl2-2:arm64 (2.1.28+dfsg1-9) ...
+Setting up libnghttp3-9:arm64 (1.8.0-1) ...
+Setting up libubsan1:arm64 (14.2.0-19) ...
+Setting up perl-modules-5.40 (5.40.1-6) ...
+Setting up sensible-utils (0.0.25) ...
+Setting up libhwasan0:arm64 (14.2.0-19) ...
+Setting up libasan8:arm64 (14.2.0-19) ...
+Setting up libtasn1-6:arm64 (4.20.0-2) ...
+Setting up libkrb5-3:arm64 (1.21.3-5) ...
+Setting up libssh2-1t64:arm64 (1.11.1-1) ...
+Setting up libtsan2:arm64 (14.2.0-19) ...
+Setting up libbinutils:arm64 (2.44-3) ...
+Setting up libisl23:arm64 (0.27-1) ...
+Setting up libcc1-0:arm64 (14.2.0-19) ...
+Setting up libldap2:arm64 (2.6.10+dfsg-1) ...
+Setting up liblsan0:arm64 (14.2.0-19) ...
+Setting up libitm1:arm64 (14.2.0-19) ...
+Setting up libctf0:arm64 (2.44-3) ...
+Setting up binutils-aarch64-linux-gnu (2.44-3) ...
+Setting up libidn2-0:arm64 (2.3.8-2) ...
+Setting up libperl5.40:arm64 (5.40.1-6) ...
+Setting up perl (5.40.1-6) ...
+Setting up libgprofng0:arm64 (2.44-3) ...
+Setting up libgssapi-krb5-2:arm64 (1.21.3-5) ...
+Setting up cpp-14-aarch64-linux-gnu (14.2.0-19) ...
+Setting up libgcc-14-dev:arm64 (14.2.0-19) ...
+Setting up libgnutls30t64:arm64 (3.8.9-3) ...
+Setting up postgresql-client-common (278) ...
+Setting up libpsl5t64:arm64 (0.21.2-1.1+b1) ...
+Setting up libpq5:arm64 (17.6-0+deb13u1) ...
+Setting up libpq-dev (17.6-0+deb13u1) ...
+Setting up binutils (2.44-3) ...
+Setting up cpp-aarch64-linux-gnu (4:14.2.0-1) ...
+Setting up librtmp1:arm64 (2.4+20151223.gitfa8646d.1-2+b5) ...
+Setting up cpp-14 (14.2.0-19) ...
+Setting up cpp (4:14.2.0-1) ...
+Setting up gcc-14-aarch64-linux-gnu (14.2.0-19) ...
+Setting up gcc-aarch64-linux-gnu (4:14.2.0-1) ...
+Setting up libcurl4t64:arm64 (8.14.1-2+deb13u2) ...
+Setting up postgresql-client-17 (17.6-0+deb13u1) ...
+update-alternatives: using /usr/share/postgresql/17/man/man1/psql.1.gz to provide /usr/share/man/man1/psql.1.gz (psql.1.gz) in auto mode
+Setting up gcc-14 (14.2.0-19) ...
+Setting up curl (8.14.1-2+deb13u2) ...
+Setting up postgresql-client (17+278) ...
+Setting up gcc (4:14.2.0-1) ...
+Processing triggers for libc-bin (2.41-12) ...
+[91mUsing Python 3.11.14 environment at: /usr/local
+[0m[91mResolved 128 packages in 4.52s
+[0m[91m   Building deepagents-runtime @ file:///app
+[0m[91mDownloading psycopg-binary (6.4MiB)
+[0m[91mDownloading pygments (1.2MiB)
+[0m[91mDownloading openai (1.0MiB)
+[0m[91mDownloading zstandard (4.8MiB)
+[0m[91mDownloading tiktoken (1.1MiB)
+[0m[91mDownloading pydantic-core (1.8MiB)
+[0m[91mDownloading jsonschema-rs (2.0MiB)
+[0m[91mDownloading ruff (12.8MiB)
+[0m[91mDownloading grpcio-tools (2.5MiB)
+[0m[91mDownloading uvloop (3.6MiB)
+[0m[91mDownloading cryptography (4.1MiB)
+[0m[91mDownloading grpcio (6.1MiB)
+[0m[91mDownloading mypy (12.1MiB)
+[0m[91m      Built deepagents-runtime @ file:///app
+[0m[91m   Building nats-py==2.12.0
+[0m[91m   Building forbiddenfruit==0.1.4
+[0m[91m      Built forbiddenfruit==0.1.4
+[0m[91m      Built nats-py==2.12.0
+[0m[91m Downloaded openai
+[0m[91m Downloaded tiktoken
+[0m[91m Downloaded pygments
+[0m[91m Downloaded pydantic-core
+[0m[91m Downloaded jsonschema-rs
+[0m[91m Downloaded grpcio-tools
+[0m[91m Downloaded uvloop
+[0m[91m Downloaded cryptography
+[0m[91m Downloaded psycopg-binary
+[0m[91m Downloaded zstandard
+[0m[91m Downloaded grpcio
+[0m[91m Downloaded mypy
+[0m[91m Downloaded ruff
+[0m[91mPrepared 127 packages in 15.28s
+[0m[91mInstalled 127 packages in 74ms
+[0m[91m + annotated-doc==0.0.4
+ + annotated-types==0.7.0
+ + anthropic==0.75.0
+ + anyio==4.12.0
+ + [0m[91masgiref==3.11.0
+ + attrs==25.4.0
+ + black==25.12.0
+ + blockbuster==1.5.26
+ +[0m[91m bracex==2.6
+ + certifi==2025.11.12
+ + cffi==2.0.0
+ + charset-normalizer==3.4.4
+ + click==8.3.1
+ + cloudevents==1.12.0
+ + cloudpickle==3.1.2
+ + coverage==7.13.0
+ + cryptography==46.0.3
+ + deepagents==0.3.0
+ + deepagents-runtime==0.1.0 (from file:///app)
+ + [0m[91mdeprecation==2.1.0
+ + [0m[91mdistro==1.9.[0m[91m0
+ + docstring-parser[0m[91m==0.17[0m[91m.0
+ [0m[91m+ fastapi[0m[91m==0.125.0
+ + forbiddenfruit==0.1.4
+ + googleapis-common-protos[0m[91m==1.72.0
+ [0m[91m+ grpcio[0m[91m==1.76.0[0m[91m
+ + grpcio-tools[0m[91m==1.75.[0m[91m1
+ + h11==0.[0m[91m16.0
+ [0m[91m+ [0m[91mhttpcore==1.0.9
+ + httptools==0.7.1
+ + httpx==0.28.1[0m[91m
+ + idna==3.11
+ + importlib-metadata==8.7.0
+ + iniconfig==2.3.0
+[0m[91m + jiter[0m[91m==0.12.[0m[91m0
+ [0m[91m+ jsonpatch==1.33
+ + jsonpointer==3.0.0
+ + jsonschema==4.25.1
+ + jsonschema-rs==0.29.1[0m[91m
+ + jsonschema-specifications==2025.9.1
+ + langchain==1.2.0[0m[91m
+ + langchain-anthropic==1.3[0m[91m.0
+ + langchain-core[0m[91m==1.[0m[91m2.4
+ +[0m[91m langchain-openai==1.[0m[91m1.6
+ [0m[91m+ langgraph==1[0m[91m.0.5
+[0m[91m + langgraph-api[0m[91m==0.6[0m[91m.10
+ [0m[91m+ langgraph-checkpoint[0m[91m==3.0.1[0m[91m
+ + langgraph-checkpoint-postgres==3.0.2
+ + langgraph-cli==0.4.11
+ + langgraph-prebuilt==1.0.5
+ + langgraph-runtime-inmem==0.20.1
+ + langgraph-sdk==0.3.1
+ + langsmith==0.5.0
+ + librt==0.[0m[91m7.4
+ + mypy==1.19.1
+ + mypy-extensions==1.1.0
+ + nats-py==2.12.0
+ + openai==2.14.0
+ + opentelemetry-api==1.39.1
+ + opentelemetry-exporter-otlp==1.39.1
+ + opentelemetry-exporter-otlp-proto-common==1.39.1
+ + opentelemetry-exporter-otlp-proto-grpc==1.39.1
+ + opentelemetry-exporter-otlp-proto-http==1.39.1
+ + opentelemetry-instrumentation==0.60b1
+ + opentelemetry-instrumentation-asgi==0.60b1
+ + opentelemetry-instrumentation-fastapi==0.60b1
+ + opentelemetry-proto==1.39.1
+ + opentelemetry-sdk==1.39.1
+ + opentelemetry-semantic-conventions==0.60b1
+ + opentelemetry-util-http==0.60b1
+ + orjson==3.11.5
+ + ormsgpack==1.12.1
+ + packaging==25.0
+ + pathspec==0.12.1
+ + platformdirs==4.5.1
+ + pluggy==1.6.0
+ + prometheus-client==0.23.1
+ [0m[91m+ protobuf==6.33.2
+ + psycopg==3.3.2
+[0m[91m + psycopg-binary==3.3.2[0m[91m
+ +[0m[91m psycopg-pool[0m[91m==3.[0m[91m3.0[0m[91m
+ + pycparser==2[0m[91m.23[0m[91m
+ [0m[91m+ [0m[91mpydantic[0m[91m==2.12.5
+ + pydantic-core==2.41.5
+ + pydantic-settings==2.12.0
+ + pygments==2.19.2
+ + pyjwt==2.10.1
+ + pytest==9.0.2
+ +[0m[91m pytest-asyncio==1.3.0[0m[91m
+ +[0m[91m pytest-cov[0m[91m==7.0.0[0m[91m
+ + pytest-mock[0m[91m==3.15[0m[91m.1
+ [0m[91m+ [0m[91mpytest-timeout==2[0m[91m.4.0
+[0m[91m + [0m[91mpython-dotenv==1.2.1[0m[91m
+ +[0m[91m pytokens[0m[91m==0.3[0m[91m.0
+ [0m[91m+ pyyaml==6.0.3
+ + redis[0m[91m==7[0m[91m.1.0[0m[91m
+ + [0m[91mreferencing==[0m[91m0.37.[0m[91m0
+[0m[91m + [0m[91mregex==2025.11.[0m[91m3
+ [0m[91m+ [0m[91mrequests[0m[91m==2.[0m[91m32.[0m[91m5
+[0m[91m + [0m[91mrequests-toolbelt==1[0m[91m.0.0
+[0m[91m +[0m[91m rpds-py[0m[91m==0.30[0m[91m.0
+ [0m[91m+ ruff==[0m[91m0.14.10[0m[91m
+ + [0m[91msniffio==1[0m[91m.3.1[0m[91m
+ [0m[91m+ sse-starlette==[0m[91m2.1.3
+ + starlette==0.50.0
+ + structlog==25.5.0
+[0m[91m + tenacity[0m[91m==9.[0m[91m1.2[0m[91m
+ [0m[91m+ [0m[91mtiktoken==[0m[91m0.[0m[91m12.0[0m[91m
+ [0m[91m+[0m[91m tqdm[0m[91m==4.67.1
+ + [0m[91mtruststore[0m[91m==0.[0m[91m10.[0m[91m4
+[0m[91m +[0m[91m types-cffi[0m[91m==[0m[91m1.[0m[91m17.0.20250915
+ + types-pyopenssl==24.1.0.20240722
+ +[0m[91m types-redis==4.6.0.20241004
+ +[0m[91m types-setuptools==80.9.0.20250822
+ + typing-extensions==4.15.0
+ + typing-inspection==0.4.2
+ + urllib3==2.6.2
+ +[0m[91m uuid-utils[0m[91m==0.12.[0m[91m0
+ [0m[91m+ [0m[91muvicorn==[0m[91m0.38.[0m[91m0
+ + [0m[91muvloop==0.[0m[91m22.1
+ + watchfiles==1.1.1
+[0m[91m + wcmatch==10.1[0m[91m
+ +[0m[91m websockets==[0m[91m15.0[0m[91m.1[0m[91m
+[0m[91m + [0m[91mwrapt==1.[0m[91m17.3
+[0m[91m + [0m[91mxxhash==[0m[91m3.6[0m[91m.0[0m[91m
+ [0m[91m+ zipp[0m[91m==3.23.[0m[91m0
+ +[0m[91m zstandard[0m[91m==0.25.[0m[91m0
+[0mReading package lists...
+Building dependency tree...
+Reading state information...
+The following packages will be REMOVED:
+  binutils* binutils-aarch64-linux-gnu* binutils-common* cpp* cpp-14*
+  cpp-14-aarch64-linux-gnu* cpp-aarch64-linux-gnu* gcc* gcc-14*
+  gcc-14-aarch64-linux-gnu* gcc-aarch64-linux-gnu* libasan8* libatomic1*
+  libbinutils* libcc1-0* libctf-nobfd0* libctf0* libgcc-14-dev* libgomp1*
+  libgprofng0* libhwasan0* libisl23* libitm1* libjansson4* liblsan0* libmpc3*
+  libmpfr6* libpq-dev* libsframe1* libssl-dev* libtsan2* libubsan1*
+0 upgraded, 0 newly installed, 32 to remove and 0 not upgraded.
+After this operation, 200 MB disk space will be freed.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 9586 files and directories currently installed.)
+Removing gcc (4:14.2.0-1) ...
+Removing gcc-14 (14.2.0-19) ...
+Removing binutils (2.44-3) ...
+Removing gcc-aarch64-linux-gnu (4:14.2.0-1) ...
+Removing gcc-14-aarch64-linux-gnu (14.2.0-19) ...
+Removing binutils-aarch64-linux-gnu (2.44-3) ...
+Removing libgprofng0:arm64 (2.44-3) ...
+Removing libctf0:arm64 (2.44-3) ...
+Removing libbinutils:arm64 (2.44-3) ...
+Removing binutils-common:arm64 (2.44-3) ...
+Removing cpp (4:14.2.0-1) ...
+Removing cpp-14 (14.2.0-19) ...
+Removing cpp-aarch64-linux-gnu (4:14.2.0-1) ...
+Removing cpp-14-aarch64-linux-gnu (14.2.0-19) ...
+Removing libgcc-14-dev:arm64 (14.2.0-19) ...
+Removing libasan8:arm64 (14.2.0-19) ...
+Removing libatomic1:arm64 (14.2.0-19) ...
+Removing libcc1-0:arm64 (14.2.0-19) ...
+Removing libctf-nobfd0:arm64 (2.44-3) ...
+Removing libgomp1:arm64 (14.2.0-19) ...
+Removing libhwasan0:arm64 (14.2.0-19) ...
+Removing libisl23:arm64 (0.27-1) ...
+Removing libitm1:arm64 (14.2.0-19) ...
+Removing libjansson4:arm64 (2.14-2+b3) ...
+Removing liblsan0:arm64 (14.2.0-19) ...
+Removing libmpc3:arm64 (1.3.1-1+b3) ...
+Removing libmpfr6:arm64 (4.2.2-1) ...
+Removing libpq-dev (17.6-0+deb13u1) ...
+Removing libsframe1:arm64 (2.44-3) ...
+Removing libssl-dev:arm64 (3.5.4-1~deb13u1) ...
+Removing libtsan2:arm64 (14.2.0-19) ...
+Removing libubsan1:arm64 (14.2.0-19) ...
+Processing triggers for libc-bin (2.41-12) ...
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 8514 files and directories currently installed.)
+Purging configuration files for binutils-common:arm64 (2.44-3) ...
+Purging configuration files for binutils (2.44-3) ...
+Purging configuration files for cpp (4:14.2.0-1) ...
+ ---> Removed intermediate container eb2592edcd65
+ ---> 753d9633e1fc
+Step 19/23 : RUN chown -R appuser:appuser /app &&     chmod +x /app/scripts/ci/*.sh
+ ---> Running in 92f612db9d0b
+ ---> Removed intermediate container 92f612db9d0b
+ ---> a5cd52c527f0
+Step 20/23 : USER appuser
+ ---> Running in 2f87c522ac6b
+ ---> Removed intermediate container 2f87c522ac6b
+ ---> 11b9f02100f5
+Step 21/23 : EXPOSE 8080
+ ---> Running in 2ae408c0a87b
+ ---> Removed intermediate container 2ae408c0a87b
+ ---> 868ed7930424
+Step 22/23 : HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3     CMD python -c "import requests; requests.get('http://localhost:8080/health', timeout=5)"
+ ---> Running in 7a44e1014b40
+ ---> Removed intermediate container 7a44e1014b40
+ ---> f39eba2a9e6a
+Step 23/23 : ENTRYPOINT ["/app/scripts/ci/run.sh"]
+ ---> Running in 2167a8ccf41c
+ ---> Removed intermediate container 2167a8ccf41c
+ ---> 3421a8dbc15a
+[Warning] One or more build-args [BUILD_DATE GIT_COMMIT] were not consumed
+Successfully built 3421a8dbc15a
+Successfully tagged deepagents-runtime:ci-test
+[0;32m[SUCCESS][0m Docker image built successfully
+[0;34m[INFO][0m Loading image into Kind cluster...
+Image: "deepagents-runtime:ci-test" with ID "sha256:3421a8dbc15a23c926a066676b26fafe86ef2f9f6ed48e5cd13051d1ec6cc294" not yet present on node "zerotouch-preview-control-plane", loading...
+[0;32m[SUCCESS][0m Image loaded successfully into Kind cluster
+[0;32m[SUCCESS][0m Build and load complete: deepagents-runtime:ci-test
+[0;32m[SUCCESS][0m Docker image built and loaded into Kind cluster
+[0;34m[INFO][0m Applying preview patches...
+[0;34m╔══════════════════════════════════════════════════════════════╗[0m
+[0;34m║   Applying Preview Environment Patches                      ║[0m
+[0;34m╚══════════════════════════════════════════════════════════════╝[0m
+
+[0;34mRunning: 00-apply-all-patches.sh[0m
+[0;34m╔══════════════════════════════════════════════════════════════╗[0m
+[0;34m║   Applying Preview Environment Patches                      ║[0m
+[0;34m╚══════════════════════════════════════════════════════════════╝[0m
+
+[0;34mRunning: 01-downsize-postgres.sh[0m
+[0;32m✓[0m PostgreSQL: medium → micro (100m-500m CPU, 256Mi-1Gi RAM)
+[0;32m✓[0m PostgreSQL storage: 20GB → 10GB
+
+[0;34mRunning: 02-downsize-dragonfly.sh[0m
+[0;32m✓[0m Dragonfly: medium → micro (100m-500m CPU, 256Mi-1Gi RAM)
+[0;32m✓[0m Dragonfly storage: 10GB → 5GB
+
+[0;34mRunning: 03-downsize-application.sh[0m
+[0;32m✓[0m Application: medium → small (250m-1000m CPU, 512Mi-2Gi RAM)
+
+[0;32m✓ All preview patches applied successfully[0m
+
+[0;34mRunning: 01-downsize-postgres.sh[0m
+[1;33m⊘[0m PostgreSQL already at micro size
+[1;33m⊘[0m PostgreSQL storage already optimized
+
+[0;34mRunning: 02-downsize-dragonfly.sh[0m
+[1;33m⊘[0m Dragonfly already at micro size
+[1;33m⊘[0m Dragonfly storage already optimized
+
+[0;34mRunning: 03-downsize-application.sh[0m
+[1;33m⊘[0m Application already at small size
+
+[0;32m✓ All preview patches applied successfully[0m
+[0;32m[SUCCESS][0m Preview patches applied
+[0;34m[INFO][0m Running pre-deploy diagnostics...
+================================================================================
+DeepAgents Runtime - Service Dependencies Diagnostics
+================================================================================
+
+=== Platform APIs (Required) ===
+EventDrivenService XRD:
+NAME                                          ESTABLISHED   OFFERED   AGE
+xeventdrivenservices.platform.bizmatters.io   True          True      10h
+  ✓ Available
+PostgresInstance XRD:
+NAME                                        ESTABLISHED   OFFERED   AGE
+xpostgresinstances.database.bizmatters.io   True          True      10h
+  ✓ Available
+DragonflyInstance XRD:
+NAME                                         ESTABLISHED   OFFERED   AGE
+xdragonflyinstances.database.bizmatters.io   True          True      10h
+  ✓ Available
+
+=== Database Claims ===
+PostgreSQL Claim:
+  ✓ Ready
+Dragonfly Claim:
+  ✓ Ready
+
+=== Database Pods ===
+PostgreSQL:
+NAME                      READY   STATUS    RESTARTS   AGE     IP            NODE                              NOMINATED NODE   READINESS GATES
+deepagents-runtime-db-1   1/1     Running   0          3h35m   10.244.0.47   zerotouch-preview-control-plane   <none>           <none>
+
+Dragonfly:
+NAME                         READY   STATUS    RESTARTS   AGE     IP            NODE                              NOMINATED NODE   READINESS GATES
+deepagents-runtime-cache-0   1/1     Running   0          3h37m   10.244.0.46   zerotouch-preview-control-plane   <none>           <none>
+
+=== Connection Secrets ===
+PostgreSQL Connection Secret:
+NAME                         TYPE     DATA   AGE
+deepagents-runtime-db-conn   Opaque   6      3h37m
+  ✓ Exists
+Dragonfly Connection Secret:
+NAME                            TYPE     DATA   AGE
+deepagents-runtime-cache-conn   Opaque   3      3h37m
+  ✓ Exists
+LLM Keys Secret:
+NAME                          TYPE     DATA   AGE
+deepagents-runtime-llm-keys   Opaque   2      3h37m
+  ✓ Exists
+
+=== NATS Messaging ===
+NAME                        READY   STATUS    RESTARTS   AGE   IP            NODE                              NOMINATED NODE   READINESS GATES
+nats-0                      2/2     Running   0          10h   10.244.0.27   zerotouch-preview-control-plane   <none>           <none>
+nats-box-5fc685db9b-vtflg   1/1     Running   0          10h   10.244.0.19   zerotouch-preview-control-plane   <none>           <none>
+
+=== Namespace Resource Usage ===
+  Metrics not available
+
+=== Recent Events (intelligence-deepagents namespace) ===
+23m         Normal    SuccessfulCreate       job/nats-integration-tests                   Created pod: nats-integration-tests-qkvrl
+23m         Normal    Created                pod/nats-integration-tests-qkvrl             Created container test-runner
+23m         Normal    Started                pod/nats-integration-tests-qkvrl             Started container test-runner
+21m         Normal    Pulled                 pod/nats-integration-tests-ksnjt             Container image "deepagents-runtime:ci-test" already present on machine
+21m         Normal    Created                pod/nats-integration-tests-ksnjt             Created container test-runner
+21m         Normal    Scheduled              pod/nats-integration-tests-ksnjt             Successfully assigned intelligence-deepagents/nats-integration-tests-ksnjt to zerotouch-preview-control-plane
+21m         Normal    Started                pod/nats-integration-tests-ksnjt             Started container test-runner
+21m         Normal    SuccessfulCreate       job/nats-integration-tests                   Created pod: nats-integration-tests-ksnjt
+20m         Warning   BackoffLimitExceeded   job/nats-integration-tests                   Job has reached the specified backoff limit
+3m59s       Normal    Updated                externalsecret/deepagents-runtime-llm-keys   Updated Secret
+
+================================================================================
+Diagnostics complete
+================================================================================
+[0;32m[SUCCESS][0m Pre-deploy diagnostics completed
+[0;34m[INFO][0m Deploying service...
+================================================================================
+Deploying DeepAgents Runtime to Kubernetes
+================================================================================
+  Namespace: intelligence-deepagents
+  Image:     deepagents-runtime:ci-test
+================================================================================
+[0;34m[INFO][0m Validating platform dependencies...
+================================================================================
+Validating Platform Dependencies
+================================================================================
+[0;34m[INFO][0m Checking required XRDs...
+[0;32m[SUCCESS][0m ✓ XRD xeventdrivenservices.platform.bizmatters.io exists
+[0;32m[SUCCESS][0m ✓ XRD xpostgresinstances.database.bizmatters.io exists
+[0;32m[SUCCESS][0m ✓ XRD xdragonflyinstances.database.bizmatters.io exists
+[0;34m[INFO][0m Checking required compositions...
+[0;32m[SUCCESS][0m ✓ Composition event-driven-service exists
+[0;32m[SUCCESS][0m ✓ Composition postgres-instance exists
+[0;32m[SUCCESS][0m ✓ Composition dragonfly-instance exists
+[0;34m[INFO][0m Checking Crossplane providers...
+[0;32m[SUCCESS][0m ✓ All        1 Crossplane providers are healthy
+[0;34m[INFO][0m Checking core platform namespaces...
+[0;32m[SUCCESS][0m ✓ Namespace crossplane-system exists
+[0;32m[SUCCESS][0m ✓ Namespace external-secrets exists
+[0;32m[SUCCESS][0m ✓ Namespace argocd exists
+[0;34m[INFO][0m Checking service endpoints...
+[0;32m[SUCCESS][0m ✓ Found        1 PostgreSQL clusters
+No resources found
+[0;32m[SUCCESS][0m ✓ Found        0 Dragonfly caches
+[0;32m[SUCCESS][0m ✓ Found NATS messaging
+[0;32m[SUCCESS][0m ✓ External Secrets ClusterSecretStore is ready
+
+[0;32m[SUCCESS][0m Platform dependency validation completed successfully
+================================================================================
+[0;34m[INFO][0m Running pre-flight checks...
+[0;34m[INFO][0m ✓ Platform is ready for deployment
+[0;34m[INFO][0m Creating namespace...
+namespace/intelligence-deepagents unchanged
+[0;34m[INFO][0m Applying ExternalSecret for LLM keys...
+externalsecret.external-secrets.io/deepagents-runtime-llm-keys configured
+[0;34m[INFO][0m Waiting for LLM keys secret...
+Waiting for ExternalSecret deepagents-runtime-llm-keys to sync...
+✓ Secret deepagents-runtime-llm-keys created successfully by ExternalSecret
+[0;34m[INFO][0m Applying database claims...
+postgresinstance.database.bizmatters.io/deepagents-runtime-db unchanged
+dragonflyinstance.database.bizmatters.io/deepagents-runtime-cache unchanged
+[0;34m[INFO][0m Waiting for PostgreSQL cluster...
+Waiting for PostgreSQL cluster deepagents-runtime-db to be ready...
+  Cluster: deepagents-runtime-db | Status: Cluster in healthy state | Ready: 1/1 (0s elapsed)
+✓ PostgreSQL cluster deepagents-runtime-db is ready
+[0;34m[INFO][0m Waiting for Dragonfly cache...
+Waiting for Dragonfly cache deepagents-runtime-cache to be ready...
+  StatefulSet: deepagents-runtime-cache | Ready: 1/1 (0s elapsed)
+✓ Dragonfly cache deepagents-runtime-cache is ready
+[0;34m[INFO][0m Waiting for database connection secrets...
+✓ Secret deepagents-runtime-db-conn created successfully
+✓ Secret deepagents-runtime-cache-conn created successfully
+[0;34m[INFO][0m Creating NATS stream and consumer...
+job.batch/create-agent-execution-stream unchanged
+[0;34m[INFO][0m Waiting for NATS stream creation job to complete...
+job.batch/create-agent-execution-stream condition met
+[0;32m[SUCCESS][0m NATS stream and consumer created successfully
+[0;34m[INFO][0m Verifying image deepagents-runtime:ci-test is available in Kind cluster...
+[0;34m[INFO][0m Using Kind cluster: zerotouch-preview
+docker.io/library/deepagents-runtime                     ci-test              1361efb5e1a9e       199MB
+[0;32m[SUCCESS][0m Image found in Kind cluster
+Image details:
+docker.io/library/deepagents-runtime                     ci-test              1361efb5e1a9e       199MB
+[0;34m[INFO][0m Applying EventDrivenService claim...
+[0;34m[INFO][0m Preview mode - using micro size for resource optimization...
+
+=== EventDrivenService Claim to be Applied ===
+apiVersion: platform.bizmatters.io/v1alpha1
+kind: EventDrivenService
+metadata:
+  name: deepagents-runtime
+  namespace: intelligence-deepagents
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  image: deepagents-runtime:ci-test
+  size: micro
+  nats:
+    stream: AGENT_EXECUTION
+    consumer: deepagents-runtime-workers
+  # Note: livenessProbe and readinessProbe are configured in the Composition,
+  # not in the claim. The XRD doesn't support these fields directly.
+  # Secrets with standard environment variable names (envFrom)
+  secret1Name: deepagents-runtime-db-conn      # POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_SCHEMA
+  secret2Name: deepagents-runtime-cache-conn   # DRAGONFLY_HOST, DRAGONFLY_PORT, DRAGONFLY_PASSWORD
+  secret3Name: deepagents-runtime-llm-keys     # OPENAI_API_KEY, ANTHROPIC_API_KEY
+=== End of Claim ===
+
+[0;34m[INFO][0m Applying EventDrivenService claim to namespace: intelligence-deepagents
+eventdrivenservice.platform.bizmatters.io/deepagents-runtime unchanged
+
+=== Verifying EventDrivenService claim was created ===
+apiVersion: platform.bizmatters.io/v1alpha1
+kind: EventDrivenService
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"platform.bizmatters.io/v1alpha1","kind":"EventDrivenService","metadata":{"annotations":{"argocd.argoproj.io/sync-wave":"2"},"name":"deepagents-runtime","namespace":"intelligence-deepagents"},"spec":{"image":"deepagents-runtime:ci-test","nats":{"consumer":"deepagents-runtime-workers","stream":"AGENT_EXECUTION"},"secret1Name":"deepagents-runtime-db-conn","secret2Name":"deepagents-runtime-cache-conn","secret3Name":"deepagents-runtime-llm-keys","size":"micro"}}
+  creationTimestamp: "2025-12-20T03:30:12Z"
+  finalizers:
+  - finalizer.apiextensions.crossplane.io
+  generation: 6
+  name: deepagents-runtime
+  namespace: intelligence-deepagents
+  resourceVersion: "124987"
+  uid: 93229bf1-0e7a-4f69-aec7-f32f0f1ce155
+spec:
+  compositeDeletePolicy: Background
+  compositionRef:
+    name: event-driven-service
+  compositionRevisionRef:
+    name: event-driven-service-c776a58
+  compositionUpdatePolicy: Automatic
+  image: deepagents-runtime:ci-test
+  nats:
+    consumer: deepagents-runtime-workers
+    stream: AGENT_EXECUTION
+    url: nats://nats.nats.svc:4222
+  resourceRef:
+    apiVersion: platform.bizmatters.io/v1alpha1
+    kind: XEventDrivenService
+    name: deepagents-runtime-9db4f
+  secret1Name: deepagents-runtime-db-conn
+  secret2Name: deepagents-runtime-cache-conn
+  secret3Name: deepagents-runtime-llm-keys
+  size: micro
+status:
+  conditions:
+  - lastTransitionTime: "2025-12-20T03:30:12Z"
+    reason: ReconcileSuccess
+    status: "True"
+    type: Synced
+  - lastTransitionTime: "2025-12-20T03:30:13Z"
+    reason: Available
+    status: "True"
+    type: Ready
+
+Checking if EventDrivenService was created...
+apiVersion: platform.bizmatters.io/v1alpha1
+kind: EventDrivenService
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"platform.bizmatters.io/v1alpha1","kind":"EventDrivenService","metadata":{"annotations":{"argocd.argoproj.io/sync-wave":"2"},"name":"deepagents-runtime","namespace":"intelligence-deepagents"},"spec":{"image":"deepagents-runtime:ci-test","nats":{"consumer":"deepagents-runtime-workers","stream":"AGENT_EXECUTION"},"secret1Name":"deepagents-runtime-db-conn","secret2Name":"deepagents-runtime-cache-conn","secret3Name":"deepagents-runtime-llm-keys","size":"micro"}}
+  creationTimestamp: "2025-12-20T03:30:12Z"
+  finalizers:
+  - finalizer.apiextensions.crossplane.io
+  generation: 6
+  name: deepagents-runtime
+  namespace: intelligence-deepagents
+  resourceVersion: "124987"
+  uid: 93229bf1-0e7a-4f69-aec7-f32f0f1ce155
+spec:
+  compositeDeletePolicy: Background
+  compositionRef:
+    name: event-driven-service
+  compositionRevisionRef:
+    name: event-driven-service-c776a58
+  compositionUpdatePolicy: Automatic
+  image: deepagents-runtime:ci-test
+  nats:
+    consumer: deepagents-runtime-workers
+    stream: AGENT_EXECUTION
+    url: nats://nats.nats.svc:4222
+  resourceRef:
+    apiVersion: platform.bizmatters.io/v1alpha1
+    kind: XEventDrivenService
+    name: deepagents-runtime-9db4f
+  secret1Name: deepagents-runtime-db-conn
+  secret2Name: deepagents-runtime-cache-conn
+  secret3Name: deepagents-runtime-llm-keys
+  size: micro
+status:
+  conditions:
+  - lastTransitionTime: "2025-12-20T03:30:12Z"
+    reason: ReconcileSuccess
+    status: "True"
+    type: Synced
+  - lastTransitionTime: "2025-12-20T03:30:13Z"
+    reason: Available
+    status: "True"
+    type: Ready
+[0;34m[INFO][0m Waiting for deployment to be ready...
+=== Debugging deployment status ===
+Checking EventDrivenService status...
+NAME                 SYNCED   READY   CONNECTION-SECRET   AGE
+deepagents-runtime   True     True                        3h35m
+Checking XEventDrivenService status...
+NAME                       SYNCED   READY   COMPOSITION            AGE
+deepagents-runtime-9db4f   True     True    event-driven-service   3h35m
+Checking deployments...
+NAME                 READY   UP-TO-DATE   AVAILABLE   AGE     CONTAINERS   IMAGES                       SELECTOR
+deepagents-runtime   1/1     1            1           3h35m   main         deepagents-runtime:ci-test   app.kubernetes.io/name=deepagents-runtime
+Checking pods...
+NAME                                  READY   STATUS      RESTARTS   AGE     IP            NODE                              NOMINATED NODE   READINESS GATES
+create-agent-execution-stream-5m8jf   0/1     Completed   0          3h35m   10.244.0.48   zerotouch-preview-control-plane   <none>           <none>
+deepagents-runtime-597f679b48-h5lbr   1/1     Running     0          36m     10.244.0.63   zerotouch-preview-control-plane   <none>           <none>
+deepagents-runtime-cache-0            1/1     Running     0          3h37m   10.244.0.46   zerotouch-preview-control-plane   <none>           <none>
+deepagents-runtime-db-1               1/1     Running     0          3h35m   10.244.0.47   zerotouch-preview-control-plane   <none>           <none>
+nats-integration-tests-ksnjt          0/1     Error       0          22m     10.244.0.69   zerotouch-preview-control-plane   <none>           <none>
+nats-integration-tests-qkvrl          0/1     Error       0          23m     10.244.0.68   zerotouch-preview-control-plane   <none>           <none>
+Checking ReplicaSets...
+NAME                            DESIRED   CURRENT   READY   AGE     CONTAINERS   IMAGES                       SELECTOR
+deepagents-runtime-597f679b48   1         1         1       3h35m   main         deepagents-runtime:ci-test   app.kubernetes.io/name=deepagents-runtime,pod-template-hash=597f679b48
+deepagents-runtime-c7685c54d    0         0         0       49m     main         deepagents-runtime:ci-test   app.kubernetes.io/name=deepagents-runtime,pod-template-hash=c7685c54d
+Checking recent events...
+33m         Normal    Created                pod/nats-integration-tests-frjjx             Created container test-runner
+33m         Normal    Started                pod/nats-integration-tests-frjjx             Started container test-runner
+31m         Warning   BackoffLimitExceeded   job/nats-integration-tests                   Job has reached the specified backoff limit
+23m         Normal    Pulled                 pod/nats-integration-tests-qkvrl             Container image "deepagents-runtime:ci-test" already present on machine
+23m         Normal    Scheduled              pod/nats-integration-tests-qkvrl             Successfully assigned intelligence-deepagents/nats-integration-tests-qkvrl to zerotouch-preview-control-plane
+23m         Normal    SuccessfulCreate       job/nats-integration-tests                   Created pod: nats-integration-tests-qkvrl
+23m         Normal    Created                pod/nats-integration-tests-qkvrl             Created container test-runner
+23m         Normal    Started                pod/nats-integration-tests-qkvrl             Started container test-runner
+22m         Normal    Pulled                 pod/nats-integration-tests-ksnjt             Container image "deepagents-runtime:ci-test" already present on machine
+22m         Normal    Created                pod/nats-integration-tests-ksnjt             Created container test-runner
+22m         Normal    Scheduled              pod/nats-integration-tests-ksnjt             Successfully assigned intelligence-deepagents/nats-integration-tests-ksnjt to zerotouch-preview-control-plane
+22m         Normal    Started                pod/nats-integration-tests-ksnjt             Started container test-runner
+22m         Normal    SuccessfulCreate       job/nats-integration-tests                   Created pod: nats-integration-tests-ksnjt
+20m         Warning   BackoffLimitExceeded   job/nats-integration-tests                   Job has reached the specified backoff limit
+4m2s        Normal    Updated                externalsecret/deepagents-runtime-llm-keys   Updated Secret
+Checking Crossplane managed resources...
+deepagents-runtime-9db4f-dbg7d         Service          v1                      deepagents-runtime                  intelligence-deepagents   kubernetes-provider   True     True    3h35m
+deepagents-runtime-9db4f-fmp8p         ServiceAccount   v1                      deepagents-runtime                  intelligence-deepagents   kubernetes-provider   True     True    3h35m
+deepagents-runtime-9db4f-k72sw         ScaledObject     keda.sh/v1alpha1        deepagents-runtime-scaler           intelligence-deepagents   kubernetes-provider   True     True    3h35m
+deepagents-runtime-9db4f-ph474         Deployment       apps/v1                 deepagents-runtime                  intelligence-deepagents   kubernetes-provider   True     True    3h35m
+deepagents-runtime-cache-kphp9-49bzx   Secret           v1                      deepagents-runtime-cache-password   intelligence-deepagents   kubernetes-provider   True     True    3h37m
+deepagents-runtime-cache-kphp9-9dr8n   Secret           v1                      deepagents-runtime-cache-conn       intelligence-deepagents   kubernetes-provider   True     True    3h37m
+deepagents-runtime-cache-kphp9-kkrgw   Service          v1                      deepagents-runtime-cache            intelligence-deepagents   kubernetes-provider   True     True    3h37m
+deepagents-runtime-cache-kphp9-vpz6l   StatefulSet      apps/v1                 deepagents-runtime-cache            intelligence-deepagents   kubernetes-provider   True     True    3h37m
+deepagents-runtime-db-ndmbn-tzfh4      Secret           v1                      deepagents-runtime-db-conn          intelligence-deepagents   kubernetes-provider   True     True    3h37m
+deepagents-runtime-db-ndmbn-xg82x      Cluster          postgresql.cnpg.io/v1   deepagents-runtime-db               intelligence-deepagents   kubernetes-provider   True     True    3h37m
+Waiting 30 seconds for resources to be created...
+=== Status after 30 seconds ===
+NAME                 SYNCED   READY   CONNECTION-SECRET   AGE
+deepagents-runtime   True     True                        3h35m
+NAME                 READY   UP-TO-DATE   AVAILABLE   AGE     CONTAINERS   IMAGES                       SELECTOR
+deepagents-runtime   1/1     1            1           3h35m   main         deepagents-runtime:ci-test   app.kubernetes.io/name=deepagents-runtime
+NAME                                  READY   STATUS      RESTARTS   AGE     IP            NODE                              NOMINATED NODE   READINESS GATES
+create-agent-execution-stream-5m8jf   0/1     Completed   0          3h36m   10.244.0.48   zerotouch-preview-control-plane   <none>           <none>
+deepagents-runtime-597f679b48-h5lbr   1/1     Running     0          36m     10.244.0.63   zerotouch-preview-control-plane   <none>           <none>
+deepagents-runtime-cache-0            1/1     Running     0          3h37m   10.244.0.46   zerotouch-preview-control-plane   <none>           <none>
+deepagents-runtime-db-1               1/1     Running     0          3h36m   10.244.0.47   zerotouch-preview-control-plane   <none>           <none>
+nats-integration-tests-ksnjt          0/1     Error       0          22m     10.244.0.69   zerotouch-preview-control-plane   <none>           <none>
+nats-integration-tests-qkvrl          0/1     Error       0          24m     10.244.0.68   zerotouch-preview-control-plane   <none>           <none>
+=== Resource Usage During Deployment ===
+Node resource usage:
+error: Metrics API not available
+Metrics server not available
+Pod resource usage in target namespace:
+error: Metrics API not available
+No pods running yet or metrics unavailable
+All pod resource usage (top 10 by memory):
+error: Metrics API not available
+Metrics server not available
+Deployment found, checking pod status...
+Pod status: Running
+
+=== Pod Details: deepagents-runtime-597f679b48-h5lbr ===
+NAME                                  READY   STATUS    RESTARTS   AGE   IP            NODE                              NOMINATED NODE   READINESS GATES
+deepagents-runtime-597f679b48-h5lbr   1/1     Running   0          36m   10.244.0.63   zerotouch-preview-control-plane   <none>           <none>
+
+=== Container Readiness Status ===
+true
+{
+  "lastProbeTime": null,
+  "lastTransitionTime": "2025-12-20T06:29:41Z",
+  "status": "True",
+  "type": "Ready"
+}
+
+=== Pod Logs (Last 50 lines) ===
+{"status": "healthy", "event": "health_check_completed", "level": "info", "timestamp": "2025-12-20T07:04:21.134559Z"}
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:04:21.136334Z"}
+Transient error StatusCode.UNAVAILABLE encountered while exporting traces to localhost:4317, retrying in 1.00s.
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:04:26.135594Z"}
+{"status": "healthy", "event": "health_check_completed", "level": "info", "timestamp": "2025-12-20T07:04:31.134017Z"}
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:04:31.135969Z"}
+Failed to export traces to localhost:4317, error code: StatusCode.UNAVAILABLE
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:04:36.135463Z"}
+Transient error StatusCode.UNAVAILABLE encountered while exporting traces to localhost:4317, retrying in 0.95s.
+{"status": "healthy", "event": "health_check_completed", "level": "info", "timestamp": "2025-12-20T07:04:41.134114Z"}
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:04:41.136521Z"}
+Failed to export traces to localhost:4317, error code: StatusCode.UNAVAILABLE
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:04:46.136803Z"}
+Transient error StatusCode.UNAVAILABLE encountered while exporting traces to localhost:4317, retrying in 0.92s.
+{"status": "healthy", "event": "health_check_completed", "level": "info", "timestamp": "2025-12-20T07:04:51.133243Z"}
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:04:51.134572Z"}
+Failed to export traces to localhost:4317, error code: StatusCode.UNAVAILABLE
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:04:56.138536Z"}
+Transient error StatusCode.UNAVAILABLE encountered while exporting traces to localhost:4317, retrying in 0.95s.
+{"status": "healthy", "event": "health_check_completed", "level": "info", "timestamp": "2025-12-20T07:05:01.132788Z"}
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:05:01.138453Z"}
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:05:06.133262Z"}
+Failed to export traces to localhost:4317, error code: StatusCode.UNAVAILABLE
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:05:11.133698Z"}
+{"status": "healthy", "event": "health_check_completed", "level": "info", "timestamp": "2025-12-20T07:05:11.141158Z"}
+Transient error StatusCode.UNAVAILABLE encountered while exporting traces to localhost:4317, retrying in 0.99s.
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:05:16.134363Z"}
+Failed to export traces to localhost:4317, error code: StatusCode.UNAVAILABLE
+{"status": "healthy", "event": "health_check_completed", "level": "info", "timestamp": "2025-12-20T07:05:21.134226Z"}
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:05:21.136123Z"}
+Transient error StatusCode.UNAVAILABLE encountered while exporting traces to localhost:4317, retrying in 1.16s.
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:05:26.136356Z"}
+Failed to export traces to localhost:4317, error code: StatusCode.UNAVAILABLE
+{"status": "healthy", "event": "health_check_completed", "level": "info", "timestamp": "2025-12-20T07:05:31.134744Z"}
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:05:31.137099Z"}
+Transient error StatusCode.UNAVAILABLE encountered while exporting traces to localhost:4317, retrying in 1.01s.
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:05:36.140124Z"}
+{"status": "healthy", "event": "health_check_completed", "level": "info", "timestamp": "2025-12-20T07:05:41.137018Z"}
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:05:41.140155Z"}
+Failed to export traces to localhost:4317, error code: StatusCode.UNAVAILABLE
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:05:46.136064Z"}
+Transient error StatusCode.UNAVAILABLE encountered while exporting traces to localhost:4317, retrying in 0.85s.
+{"status": "healthy", "event": "health_check_completed", "level": "info", "timestamp": "2025-12-20T07:05:51.135000Z"}
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:05:51.137566Z"}
+Failed to export traces to localhost:4317, error code: StatusCode.UNAVAILABLE
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:05:56.138454Z"}
+Transient error StatusCode.UNAVAILABLE encountered while exporting traces to localhost:4317, retrying in 1.10s.
+Transient error StatusCode.UNAVAILABLE encountered while exporting traces to localhost:4317, retrying in 2.20s.
+{"status": "healthy", "event": "health_check_completed", "level": "info", "timestamp": "2025-12-20T07:06:01.134651Z"}
+{"services": {"dragonfly": true, "postgres": true, "nats": true}, "event": "readiness_check_passed", "level": "info", "timestamp": "2025-12-20T07:06:01.136356Z"}
+
+=== Pod Events ===
+Events:
+  Type    Reason     Age   From               Message
+  ----    ------     ----  ----               -------
+  Normal  Scheduled  36m   default-scheduler  Successfully assigned intelligence-deepagents/deepagents-runtime-597f679b48-h5lbr to zerotouch-preview-control-plane
+  Normal  Pulled     36m   kubelet            Container image "deepagents-runtime:ci-test" already present on machine
+  Normal  Created    36m   kubelet            Created container main
+  Normal  Started    36m   kubelet            Started container main
+
+=== Readiness Probe Status ===
+{
+  "running": {
+    "startedAt": "2025-12-20T06:29:32Z"
+  }
+}
+
+=== Testing Readiness Endpoint ===
+Pod IP: 10.244.0.63
+Attempting to curl /ready endpoint...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0   0     0   0     0     0     0  --:--:-- --:--:-- --:--:--     0*   Trying 10.244.0.63:8080...
+* Established connection to 10.244.0.63 (10.244.0.63 port 8080) from 10.244.0.70 port 35486 
+* using HTTP/1.x
+> GET /ready HTTP/1.1
+> Host: 10.244.0.63:8080
+> User-Agent: curl/8.17.0
+> Accept: */*
+> 
+* Request completely sent off
+< HTTP/1.1 200 OK
+< date: Sat, 20 Dec 2025 07:06:03 GMT
+< server: uvicorn
+< content-length: 111
+< content-type: application/json
+< 
+{ [111 bytes data]
+100   111 100   111   0     0 68901     0  --:--:-- --:--:-- --:--:-- 111000
+* Connection #0 to host 10.244.0.63:8080 left intact
+{"status":"ready","services":{"dragonfly":true,"postgres":true,"nats":true},"timestamp":"2025-12-20T07:06:04Z"}pod "curl-test" deleted from default namespace
+
+=== Checking Dependencies ===
+Database pods:
+No resources found in intelligence-deepagents namespace.
+
+Cache pods:
+No resources found in intelligence-deepagents namespace.
+
+=== Checking Secrets ===
+deepagents-runtime-cache-conn       Opaque                     3      3h37m
+deepagents-runtime-cache-password   Opaque                     1      3h37m
+deepagents-runtime-db-app           kubernetes.io/basic-auth   11     3h37m
+deepagents-runtime-db-ca            Opaque                     2      3h37m
+deepagents-runtime-db-conn          Opaque                     6      3h37m
+deepagents-runtime-db-replication   kubernetes.io/tls          2      3h37m
+deepagents-runtime-db-server        kubernetes.io/tls          2      3h37m
+deepagents-runtime-llm-keys         Opaque                     2      3h38m
+
+Waiting for deployment to be ready...
+deployment.apps/deepagents-runtime condition met
+[0;34m[INFO][0m Waiting for pods to be ready...
+pod/deepagents-runtime-597f679b48-h5lbr condition met
+[0;32m[SUCCESS][0m Service deployed successfully
+
+================================================================================
+DEPLOYMENT SUMMARY
+================================================================================
+  Namespace:        intelligence-deepagents
+  Image:            deepagents-runtime:ci-test
+  Mode:             preview
+
+Service Status:
+NAME                                 READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/deepagents-runtime   1/1     1            1           3h35m
+
+NAME                                      READY   STATUS    RESTARTS   AGE
+pod/deepagents-runtime-597f679b48-h5lbr   1/1     Running   0          36m
+
+NAME                         TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)    AGE
+service/deepagents-runtime   ClusterIP   10.96.6.190   <none>        8080/TCP   3h35m
+
+Dependencies:
+No resources found in intelligence-deepagents namespace.
+
+To view logs:
+  kubectl logs -n intelligence-deepagents -l app.kubernetes.io/name=deepagents-runtime -f
+
+To port-forward:
+  kubectl port-forward -n intelligence-deepagents svc/deepagents-runtime 8080:8080
+================================================================================
+[0;32m[SUCCESS][0m Service deployed successfully
+[0;34m[INFO][0m Running post-deploy diagnostics...
+================================================================================
+Service Diagnostics: deepagents-runtime
+Namespace: intelligence-deepagents
+================================================================================
+
+[0;34m[INFO][0m Checking service deployment...
+[0;32m[✓][0m Deployment ready: 1/1 replicas
+[0;34m[INFO][0m Checking pods...
+[0;32m[✓][0m Found        1 pod(s)
+[0;32m[✓][0m Pod deepagents-runtime-597f679b48-h5lbr: Running (1/1)
+[0;34m[INFO][0m Checking PostgreSQL database...
+[0;32m[✓][0m PostgreSQL ready: 1/1 instances
+[0;32m[✓][0m PostgreSQL has        1 pod(s) running
+[0;34m[INFO][0m Checking database connection secret...
+[0;32m[✓][0m Database connection secret 'deepagents-runtime-db-conn' exists
+[0;34m[INFO][0m Checking Dragonfly cache...
+[0;32m[✓][0m Dragonfly ready: 1/1 replicas
+[0;34m[INFO][0m Checking Dragonfly pods with label app=deepagents-runtime-cache...
+[0;32m[✓][0m Dragonfly has        1 pod(s) running
+[0;34m[INFO][0m Checking cache connection secret (waiting up to 30s)...
+✓ Secret deepagents-runtime-cache-conn created successfully
+[0;32m[✓][0m Cache connection secret 'deepagents-runtime-cache-conn' exists
+[0;34m[INFO][0m Checking NATS infrastructure...
+[0;31m[✗][0m NATS server not running in 'nats' namespace
+[0;32m[✓][0m NATS service exists at nats.nats.svc:4222
+[0;34m[INFO][0m Checking NATS stream and consumer...
+[0;34m[INFO][0m DEBUG: Listing all pods in nats namespace...
+NAME                        READY   STATUS    RESTARTS   AGE   IP            NODE                              NOMINATED NODE   READINESS GATES
+nats-0                      2/2     Running   0          10h   10.244.0.27   zerotouch-preview-control-plane   <none>           <none>
+nats-box-5fc685db9b-vtflg   1/1     Running   0          10h   10.244.0.19   zerotouch-preview-control-plane   <none>           <none>
+[0;34m[INFO][0m DEBUG: Showing labels for nats-box pod...
+nats-box-5fc685db9b-vtflg   1/1     Running   0          10h   app.kubernetes.io/component=nats-box,app.kubernetes.io/instance=nats,app.kubernetes.io/managed-by=Helm,app.kubernetes.io/name=nats,app.kubernetes.io/version=2.10.22,helm.sh/chart=nats-1.2.6,pod-template-hash=5fc685db9b
+[0;34m[INFO][0m DEBUG: nats-box check exit code: 0
+[0;34m[INFO][0m DEBUG: nats-box check output: nats-box-5fc685db9b-vtflg   1/1   Running   0     10h
+[0;34m[INFO][0m Using nats-box pod: nats-box-5fc685db9b-vtflg
+[0;34m[INFO][0m DEBUG: Stream check exit code: 0
+[0;32m[✓][0m NATS stream 'AGENT_EXECUTION' exists
+[0;32m[✓][0m Stream has 0 message(s)
+[0;34m[INFO][0m DEBUG: Consumer check exit code: 0
+[0;32m[✓][0m NATS consumer 'deepagents-runtime-workers' exists
+[0;34m[INFO][0m Checking application secrets...
+[0;34m[INFO][0m Checking LLM keys secret...
+[0;32m[✓][0m LLM keys secret 'deepagents-runtime-llm-keys' exists
+[0;32m[✓][0m OPENAI_API_KEY present in secret
+[0;32m[✓][0m ANTHROPIC_API_KEY present in secret
+[0;34m[INFO][0m Checking service endpoint...
+[0;32m[✓][0m Service 'deepagents-runtime' exists
+[0;32m[✓][0m Service exposed on port 8080
+[0;34m[INFO][0m Checking service health endpoints...
+[0;34m[INFO][0m DEBUG: Found pod for health check: deepagents-runtime-597f679b48-h5lbr
+[0;34m[INFO][0m Checking health on pod: deepagents-runtime-597f679b48-h5lbr
+[0;34m[INFO][0m DEBUG: Health check exit code: 0
+[0;32m[✓][0m Health endpoint responding
+[0;34m[INFO][0m DEBUG: Readiness check exit code: 0
+[0;32m[✓][0m Readiness endpoint responding
+[0;34m[INFO][0m Checking KEDA autoscaling...
+[0;32m[✓][0m KEDA ScaledObject 'deepagents-runtime-scaler' exists
+[0;32m[✓][0m ScaledObject is ready
+
+================================================================================
+Diagnostics Summary
+================================================================================
+Checks passed: [0;32m1[0m
+Warnings:      [1;33m0[0m
+Errors:        [0;31m1[0m
+================================================================================
+
+[0;31m[✗][0m Service has 1 error(s). Not ready for integration tests.
+[0;31m[ERROR][0m Script failed at line 265 with exit code 1
+[0;31m[ERROR][0m Last command: ./scripts/ci/post-deploy-diagnostics.sh intelligence-deepagents deepagents-runtime
+[0;31m[ERROR][0m Full log available at: /Users/arun_subramanian/Projects/biz-matters/deepagents-runtime/scripts/local/ci/logs/nats_events_20251220_123054.log
+[0;34m[INFO][0m Cleaning up...
+[0;34m[INFO][0m Removing fresh platform directory...
+[0;34m[INFO][0m Log file saved at: /Users/arun_subramanian/Projects/biz-matters/deepagents-runtime/scripts/local/ci/logs/nats_events_20251220_123054.log
+[0;34m[INFO][0m Cluster kept running for debugging - use 'kind delete cluster zerotouch-preview' to clean up manually

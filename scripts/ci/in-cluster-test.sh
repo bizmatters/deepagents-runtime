@@ -2,16 +2,31 @@
 set -euo pipefail
 
 # ==============================================================================
-# Local CI Testing Script for deepagents-runtime
+# Service CI Entry Point for deepagents-runtime
 # ==============================================================================
-# Purpose: Local testing using platform's centralized script
+# Purpose: Standardized entry point for platform-based CI testing
 # Usage: ./scripts/ci/in-cluster-test.sh
 # ==============================================================================
 
-# Clone platform if needed (using the correct branch)
-if [[ ! -d "zerotouch-platform" ]]; then
-    git clone -b refactor/services-shared-scripts https://github.com/arun4infra/zerotouch-platform.git
+# Get platform branch from service config
+if [[ -f "ci/config.yaml" ]]; then
+    if command -v yq &> /dev/null; then
+        PLATFORM_BRANCH=$(yq eval '.platform.branch // "main"' ci/config.yaml)
+    else
+        PLATFORM_BRANCH="main"
+    fi
+else
+    PLATFORM_BRANCH="main"
 fi
 
-# Run centralized script (no arguments needed)
+# Always ensure fresh platform checkout
+if [[ -d "zerotouch-platform" ]]; then
+    echo "Removing existing platform checkout for fresh clone..."
+    rm -rf zerotouch-platform
+fi
+
+echo "Cloning fresh zerotouch-platform repository (branch: $PLATFORM_BRANCH)..."
+git clone -b "$PLATFORM_BRANCH" https://github.com/arun4infra/zerotouch-platform.git zerotouch-platform
+
+# Run platform script
 ./zerotouch-platform/scripts/bootstrap/preview/tenants/scripts/in-cluster-test.sh

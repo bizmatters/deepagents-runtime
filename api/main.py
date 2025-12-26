@@ -204,7 +204,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         # Build PostgreSQL connection string with search_path
         # Support preview environment schema override via POSTGRES_SCHEMA env var
-        schema_name = os.getenv("POSTGRES_SCHEMA", "agent_executor")
+        schema_name = os.getenv("POSTGRES_SCHEMA", "public")
 
         # psycopg v3 requires search_path via options parameter with URL encoding
         postgres_connection_string = (
