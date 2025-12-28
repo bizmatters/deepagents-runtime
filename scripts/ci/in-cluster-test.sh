@@ -29,4 +29,4 @@ echo "Cloning fresh zerotouch-platform repository (branch: $PLATFORM_BRANCH)..."
 git clone -b "$PLATFORM_BRANCH" https://github.com/arun4infra/zerotouch-platform.git zerotouch-platform
 
 # Run platform script
-./zerotouch-platform/scripts/bootstrap/preview/tenants/scripts/in-cluster-test.sh
+./zerotouch-platform/scripts/bootstrap/preview/tenants/in-cluster-test.sh

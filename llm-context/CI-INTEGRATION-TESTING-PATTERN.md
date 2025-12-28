@@ -63,7 +63,7 @@ if [[ ! -d "zerotouch-platform" ]]; then
 fi
 
 # Platform handles everything based on ci/config.yaml
-./zerotouch-platform/scripts/bootstrap/preview/tenants/scripts/in-cluster-test.sh
+./zerotouch-platform/scripts/bootstrap/preview/tenants/in-cluster-test.sh
 ```
 
 ### **GitHub Integration**
