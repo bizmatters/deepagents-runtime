@@ -5,9 +5,8 @@ metadata:
   name: deepagents-runtime-migrations
   namespace: intelligence-deepagents
   annotations:
+    # Wave 1 ensures it runs AFTER ExternalSecrets (Wave 0) but BEFORE Deployment (Wave 3)
     argocd.argoproj.io/sync-wave: "1"
-    argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   template:
     metadata:
