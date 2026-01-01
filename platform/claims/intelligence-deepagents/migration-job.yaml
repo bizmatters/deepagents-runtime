@@ -14,15 +14,31 @@ spec:
       name: deepagents-runtime-migrations
     spec:
       restartPolicy: Never
+      # 1. Pod-Level Security Context (Required for Restricted Policy)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 2000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: migrations
         image: ghcr.io/arun4infra/deepagents-runtime:latest
+        # 2. Container-Level Security Context (Required for Restricted Policy)
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
         command: ["/bin/bash", "-c"]
         args: 
           - |
             echo "Starting database migrations..."
             cd /app
-            chmod +x ./scripts/ci/run-migrations.sh
+            # Note: chmod might fail if file is owned by root, but usually strictly 
+            # restricted images already have permissions set. We try anyway.
+            chmod +x ./scripts/ci/run-migrations.sh || true
             ./scripts/ci/run-migrations.sh
             echo "Migrations completed successfully"
         envFrom:
@@ -43,4 +59,4 @@ spec:
       imagePullSecrets:
       - name: ghcr-pull-secret
   backoffLimit: 3
-  activeDeadlineSeconds: 600  # 10 minutes timeout
+  activeDeadlineSeconds: 600
