@@ -9,9 +9,23 @@ spec:
   template:
     spec:
       restartPolicy: OnFailure
+      # 1. Pod-Level Security Context (Required for Restricted Policy)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 2000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: nats-cli
         image: natsio/nats-box:latest
+        # 2. Container-Level Security Context (Required for Restricted Policy)
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
         command:
         - /bin/sh
         - -c
