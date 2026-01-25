@@ -8,7 +8,7 @@ REDIS_USERNAME=pr-user
 REDIS_PASSWORD=Password@123
 
 ### PG DG
-POSTGRES_URI=postgresql://neondb_owner:npg_r6gZp2VtqwUv@ep-autumn-field-ah1ydtm3-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require
+POSTGRES_URI=
 
 # Cache Configuration (will be overridden by platform)
 REDIS_HOST=redis-10486.crce276.ap-south-1-3.ec2.cloud.redislabs.com
