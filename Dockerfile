@@ -29,7 +29,6 @@ COPY observability/ ./observability/
 COPY __init__.py ./__init__.py
 COPY migrations/ ./migrations/
 COPY tests/ ./tests/
-COPY platform/ ./platform/
 COPY scripts/ ./scripts/
 
 # Install system dependencies for psycopg v3 and psql client (for migrations)
