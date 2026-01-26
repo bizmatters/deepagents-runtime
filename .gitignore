@@ -26,3 +26,4 @@ platform-old
 platformllm-context
 llm-context
 platform
+.env.ssm
