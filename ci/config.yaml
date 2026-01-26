@@ -66,3 +66,4 @@ platform:
   service:
     type: "agentsandboxservices"
     name: "deepagents-runtime-sandbox"
+    k8s_service_name: "deepagents-runtime-sandbox-http"

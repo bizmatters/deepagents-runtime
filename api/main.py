@@ -167,7 +167,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     try:
         # Validate required environment variables
-        required_env_vars = ["POSTGRES_HOST", "POSTGRES_PASSWORD", "DRAGONFLY_HOST"]
+        required_env_vars = ["POSTGRES_URI", "DRAGONFLY_HOST"]
         missing_vars = [var for var in required_env_vars if not os.getenv(var)]
 
         if missing_vars:
@@ -175,15 +175,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.error("startup_validation_failed", missing_variables=missing_vars, message=error_msg)
             raise RuntimeError(error_msg)
 
-        # Build PostgreSQL credentials from environment variables
-        # These are populated by Kubernetes Secrets managed by External Secrets Operator
-        postgres_creds = {
-            "host": os.getenv("POSTGRES_HOST"),
-            "port": int(os.getenv("POSTGRES_PORT", "5432")),
-            "database": os.getenv("POSTGRES_DB", "deepagents-runtime-db"),
-            "username": os.getenv("POSTGRES_USER", "deepagents-runtime-db"),
-            "password": os.getenv("POSTGRES_PASSWORD"),
-        }
+        # Use POSTGRES_URI directly (LangGraph CLI expects this)
+        postgres_uri = os.getenv("POSTGRES_URI")
 
         # Build Dragonfly (Redis-compatible) configuration from environment variables
         dragonfly_config = {
@@ -194,31 +187,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         logger.info(
             "credentials_loaded_from_environment",
-            postgres_host=postgres_creds["host"],
-            postgres_port=postgres_creds["port"],
-            postgres_database=postgres_creds["database"],
+            postgres_uri_set=bool(postgres_uri),
             dragonfly_host=dragonfly_config["host"],
             dragonfly_port=dragonfly_config["port"],
             nats_url=os.getenv("NATS_URL", "nats://nats.nats.svc:4222"),
         )
 
-        # Build PostgreSQL connection string with search_path
-        # Support preview environment schema override via POSTGRES_SCHEMA env var
-        schema_name = os.getenv("POSTGRES_SCHEMA", "public")
-
-        # psycopg v3 requires search_path via options parameter with URL encoding
-        postgres_connection_string = (
-            f"postgresql://{postgres_creds['username']}:{postgres_creds['password']}"
-            f"@{postgres_creds['host']}:{postgres_creds['port']}/{postgres_creds['database']}"
-            f"?sslmode=prefer&options=-c%20search_path%3D{schema_name}"
-        )
-        logger.info(
-            "postgres_connection_string_built",
-            host=postgres_creds["host"],
-            port=postgres_creds["port"],
-            database=postgres_creds["database"],
-            schema=schema_name,
-        )
+        # Use POSTGRES_URI directly - LangGraph and ExecutionManager expect full connection string
+        postgres_connection_string = postgres_uri
+        logger.info("postgres_connection_string_loaded")
 
         # Initialize RedisClient (connects to Dragonfly)
         logger.info("initializing_redis_client")
