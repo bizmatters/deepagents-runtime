@@ -55,37 +55,26 @@ jobs:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       TENANTS_REPO_NAME: ${{ secrets.TENANTS_REPO_NAME }}
 
-  # STAGE 3: Sync secrets to SSM before release
-  sync-secrets:
+  # STAGE 3: Release (dev → staging → production)
+  release:
     needs: [build, test-nats-events, test-spec-generation]
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Service Code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-          aws-region: ap-south-1
-
-      - name: Sync Secrets to SSM
-        env:
-          POSTGRES_URI: ${{ secrets.POSTGRES_URI }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: ./scripts/ci/sync-secrets-to-ssm.sh prod
-
-  # STAGE 4: Release only if secrets sync succeeds
-  release:
-    needs: [build, sync-secrets]
     uses: arun4infra/zerotouch-platform/.github/workflows/release-pipeline.yml@main
     with:
       service_name: deepagents-runtime
       image_tag: ${{ needs.build.outputs.image_tag }}
+      dev_secrets: |
+        POSTGRES_URI=${{ secrets.DEV_POSTGRES_URI }}
+        OPENAI_API_KEY=${{ secrets.DEV_OPENAI_API_KEY }}
+        ANTHROPIC_API_KEY=${{ secrets.DEV_ANTHROPIC_API_KEY }}
+      staging_secrets: |
+        POSTGRES_URI=${{ secrets.STAGING_POSTGRES_URI }}
+        OPENAI_API_KEY=${{ secrets.STAGING_OPENAI_API_KEY }}
+        ANTHROPIC_API_KEY=${{ secrets.STAGING_ANTHROPIC_API_KEY }}
+      prod_secrets: |
+        POSTGRES_URI=${{ secrets.PROD_POSTGRES_URI }}
+        OPENAI_API_KEY=${{ secrets.PROD_OPENAI_API_KEY }}
+        ANTHROPIC_API_KEY=${{ secrets.PROD_ANTHROPIC_API_KEY }}
     secrets:
       BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
       BOT_GITHUB_USERNAME: ${{ secrets.BOT_GITHUB_USERNAME }}
