@@ -33,14 +33,13 @@ dependencies:
     - nats                   # NATS messaging platform (required for agent communication)
     - keda                   # KEDA autoscaling platform (required for scaling agents)
     - apis
-    - databases
     
   # External services (deployed before this service)
-  external: []               # deepagents-runtime has no external service dependencies
+  external: 
+    - neon-db  # Neon DB API calls
   
   # Internal services (validated after deployment)
   internal:
-    - postgres               # Validates deepagents-runtime-db cluster
     - redis                  # Validates deepagents-runtime-cache (Dragonfly)
     - nats-streams          # Validates NATS streams and consumers
     - keda-scaler           # Validates KEDA ScaledObject
