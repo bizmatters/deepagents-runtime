@@ -66,15 +66,12 @@ jobs:
       dev_secrets: |
         POSTGRES_URI=${{ secrets.DEV_POSTGRES_URI }}
         OPENAI_API_KEY=${{ secrets.DEV_OPENAI_API_KEY }}
-        ANTHROPIC_API_KEY=${{ secrets.DEV_ANTHROPIC_API_KEY }}
       staging_secrets: |
         POSTGRES_URI=${{ secrets.STAGING_POSTGRES_URI }}
         OPENAI_API_KEY=${{ secrets.STAGING_OPENAI_API_KEY }}
-        ANTHROPIC_API_KEY=${{ secrets.STAGING_ANTHROPIC_API_KEY }}
       prod_secrets: |
         POSTGRES_URI=${{ secrets.PROD_POSTGRES_URI }}
         OPENAI_API_KEY=${{ secrets.PROD_OPENAI_API_KEY }}
-        ANTHROPIC_API_KEY=${{ secrets.PROD_ANTHROPIC_API_KEY }}
     secrets:
       BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
       BOT_GITHUB_USERNAME: ${{ secrets.BOT_GITHUB_USERNAME }}
