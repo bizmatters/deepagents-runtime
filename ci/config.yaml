@@ -20,7 +20,7 @@ test:
   parallel: true
   
 deployment:
-  wait_timeout: 300
+  wait_timeout: 1200  # 20 minutes for AgentSandboxService provisioning
   health_endpoint: "/ready"      # Standard readiness endpoint
   liveness_endpoint: "/health"   # Standard liveness endpoint
 

@@ -34,7 +34,7 @@ elif command -v kubectl > /dev/null 2>&1 && kubectl cluster-info > /dev/null 2>&
 fi
 
 if [ "$IS_PREVIEW_MODE" = true ]; then
-    APP_DEPLOYMENT="$REPO_ROOT/platform/claims/intelligence-deepagents/deepagents-runtime-deployment.yaml"
+    APP_DEPLOYMENT="$REPO_ROOT/platform/deepagents-runtime/overlays/pr/deployment.yaml"
     
     if [ -f "$APP_DEPLOYMENT" ]; then
         if grep -q "size: medium" "$APP_DEPLOYMENT" 2>/dev/null; then

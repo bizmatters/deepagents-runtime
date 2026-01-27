@@ -32,7 +32,7 @@ elif command -v kubectl > /dev/null 2>&1 && kubectl cluster-info > /dev/null 2>&
 fi
 
 if [ "$IS_PREVIEW_MODE" = true ]; then
-    NATS_STREAM="$REPO_ROOT/platform/claims/intelligence-deepagents/nats-stream.yaml"
+    NATS_STREAM="$REPO_ROOT/platform/deepagents-runtime/base/claims/nats-stream.yaml"
     
     if [ -f "$NATS_STREAM" ]; then
         # Remove pod-level securityContext block

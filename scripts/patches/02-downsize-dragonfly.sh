@@ -35,7 +35,7 @@ elif command -v kubectl > /dev/null 2>&1 && kubectl cluster-info > /dev/null 2>&
 fi
 
 if [ "$IS_PREVIEW_MODE" = true ]; then
-    DRAGONFLY_CLAIM="$REPO_ROOT/platform/claims/intelligence-deepagents/dragonfly-claim.yaml"
+    DRAGONFLY_CLAIM="$REPO_ROOT/platform/deepagents-runtime/base/claims/dragonfly-claim.yaml"
     
     if [ -f "$DRAGONFLY_CLAIM" ]; then
         # Downsize to micro
