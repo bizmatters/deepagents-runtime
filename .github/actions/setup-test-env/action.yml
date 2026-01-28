@@ -1,0 +1,52 @@
+name: 'Setup Test Environment'
+description: 'Setup environment for integration tests'
+inputs:
+  github-token:
+    description: 'GitHub token for GHCR'
+    required: true
+  aws-role-arn:
+    description: 'AWS role ARN'
+    required: true
+  image-tag:
+    description: 'Image tag to pull'
+    required: true
+  tenants-repo-name:
+    description: 'Tenants repo name'
+    required: false
+  openai-api-key:
+    description: 'OpenAI API key'
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.aws-role-arn }}
+        aws-region: ap-south-1
+        
+    - name: Install yq
+      shell: bash
+      run: |
+        sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+        sudo chmod +x /usr/local/bin/yq
+        
+    - name: Login to GHCR
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ inputs.github-token }}
+        
+    - name: Pull Test Image
+      shell: bash
+      run: docker pull ${{ inputs.image-tag }}
+      
+    - name: Export Common Environment Variables
+      shell: bash
+      run: |
+        echo "BOT_GITHUB_TOKEN=${{ inputs.github-token }}" >> $GITHUB_ENV
+        echo "TENANTS_REPO_NAME=${{ inputs.tenants-repo-name }}" >> $GITHUB_ENV
+        echo "OPENAI_API_KEY=${{ inputs.openai-api-key }}" >> $GITHUB_ENV
+        echo "OVERRIDE_IMAGE_TAG=${{ inputs.image-tag }}" >> $GITHUB_ENV
