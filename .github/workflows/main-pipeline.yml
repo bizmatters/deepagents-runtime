@@ -38,8 +38,10 @@ jobs:
           token: ${{ needs.generate-token.outputs.token }}
       
       - name: Checkout submodules
+        env:
+          GH_TOKEN: ${{ needs.generate-token.outputs.token }}
         run: |
-          git config --global url."https://x-access-token:${{ needs.generate-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
           git submodule update --init --recursive
       
       - name: Set up Docker Buildx
