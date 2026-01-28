@@ -63,12 +63,3 @@ jobs:
       BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
       BOT_GITHUB_USERNAME: ${{ secrets.BOT_GITHUB_USERNAME }}
       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
-      DEV_SECRETS_BLOB: |
-        DATABASE_URL=${{ secrets.DEV_DATABASE_URL }}
-        OPENAI_API_KEY=${{ secrets.DEV_OPENAI_API_KEY }}
-      STAGING_SECRETS_BLOB: |
-        DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }}
-        OPENAI_API_KEY=${{ secrets.STAGING_OPENAI_API_KEY }}
-      PROD_SECRETS_BLOB: |
-        DATABASE_URL=${{ secrets.PROD_DATABASE_URL }}
-        OPENAI_API_KEY=${{ secrets.PROD_OPENAI_API_KEY }}
