@@ -24,6 +24,7 @@ jobs:
         with:
           app-id: ${{ vars.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          repositories: deepagents-runtime,spec-engine,zerotouch-tenants
 
   # STAGE 1: BUILD - Creates the artifact ONCE
   build:
