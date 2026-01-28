@@ -141,3 +141,6 @@ jobs:
     with:
       service_name: deepagents-runtime
       image_tag: ${{ needs.build.outputs.image_tag }}
+    secrets:
+      BOT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
