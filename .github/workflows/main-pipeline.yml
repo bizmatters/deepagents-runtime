@@ -12,17 +12,31 @@ permissions:
   pull-requests: write # Required for test reporting
 
 jobs:
+  # Generate GitHub App token for all jobs
+  generate-token:
+    runs-on: ubuntu-latest
+    outputs:
+      token: ${{ steps.app-token.outputs.token }}
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
   # STAGE 1: BUILD - Creates the artifact ONCE
   build:
+    needs: [generate-token]
     uses: arun4infra/zerotouch-platform/.github/workflows/ci-build.yml@main
     with:
       service_name: deepagents-runtime
     secrets:
-      BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
+      BOT_GITHUB_TOKEN: ${{ needs.generate-token.outputs.token }}
 
   # STAGE 2: VALIDATION MATRIX - Runs parallel integration tests using the artifact
   test-nats-events:
-    needs: [build]
+    needs: [generate-token, build]
     uses: arun4infra/zerotouch-platform/.github/workflows/ci-test.yml@main
     with:
       image_tag: ${{ needs.build.outputs.image_tag }}
@@ -31,13 +45,12 @@ jobs:
       timeout: 30
       use_real_llm: ${{ github.ref == 'refs/heads/main' }}
     secrets:
-      BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
-      BOT_GITHUB_USERNAME: ${{ secrets.BOT_GITHUB_USERNAME }}
+      BOT_GITHUB_TOKEN: ${{ needs.generate-token.outputs.token }}
       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
       TENANTS_REPO_NAME: ${{ secrets.TENANTS_REPO_NAME }}
 
   test-spec-generation:
-    needs: [build]
+    needs: [generate-token, build]
     uses: arun4infra/zerotouch-platform/.github/workflows/ci-test.yml@main
     with:
       image_tag: ${{ needs.build.outputs.image_tag }}
@@ -46,20 +59,18 @@ jobs:
       timeout: 30
       use_real_llm: ${{ github.ref == 'refs/heads/main' }}
     secrets:
-      BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
-      BOT_GITHUB_USERNAME: ${{ secrets.BOT_GITHUB_USERNAME }}
+      BOT_GITHUB_TOKEN: ${{ needs.generate-token.outputs.token }}
       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
       TENANTS_REPO_NAME: ${{ secrets.TENANTS_REPO_NAME }}
 
   # STAGE 3: Release (dev → staging → production)
   release:
-    needs: [build, test-nats-events, test-spec-generation]
+    needs: [generate-token, build, test-nats-events, test-spec-generation]
     if: github.ref == 'refs/heads/main'
     uses: arun4infra/zerotouch-platform/.github/workflows/release-pipeline.yml@main
     with:
       service_name: deepagents-runtime
       image_tag: ${{ needs.build.outputs.image_tag }}
     secrets:
-      BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
-      BOT_GITHUB_USERNAME: ${{ secrets.BOT_GITHUB_USERNAME }}
+      BOT_GITHUB_TOKEN: ${{ needs.generate-token.outputs.token }}
       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
