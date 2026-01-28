@@ -153,7 +153,7 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
             await github.rest.actions.createWorkflowDispatch({
-              owner: 'arun4infra',
+              owner: 'bizmatters',
               repo: 'zerotouch-platform',
               workflow_id: 'release-pipeline.yml',
               ref: 'main',
