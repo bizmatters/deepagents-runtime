@@ -22,7 +22,7 @@ jobs:
 
   # STAGE 2: VALIDATION MATRIX - Runs parallel integration tests using the artifact
   test-nats-events:
-    needs: build
+    needs: [build, prepare-secrets]
     uses: arun4infra/zerotouch-platform/.github/workflows/ci-test.yml@main
     with:
       image_tag: ${{ needs.build.outputs.image_tag }}
@@ -30,16 +30,15 @@ jobs:
       test_name: "nats-events"
       timeout: 30
       use_real_llm: ${{ github.ref == 'refs/heads/main' }}
+      pr_secrets_blob: ${{ needs.prepare-secrets.outputs.pr_blob }}
     secrets:
       BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
       BOT_GITHUB_USERNAME: ${{ secrets.BOT_GITHUB_USERNAME }}
       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       TENANTS_REPO_NAME: ${{ secrets.TENANTS_REPO_NAME }}
 
   test-spec-generation:
-    needs: build
+    needs: [build, prepare-secrets]
     uses: arun4infra/zerotouch-platform/.github/workflows/ci-test.yml@main
     with:
       image_tag: ${{ needs.build.outputs.image_tag }}
@@ -47,27 +46,36 @@ jobs:
       test_name: "spec-generation"
       timeout: 30
       use_real_llm: ${{ github.ref == 'refs/heads/main' }}
+      pr_secrets_blob: ${{ needs.prepare-secrets.outputs.pr_blob }}
     secrets:
       BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
       BOT_GITHUB_USERNAME: ${{ secrets.BOT_GITHUB_USERNAME }}
       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       TENANTS_REPO_NAME: ${{ secrets.TENANTS_REPO_NAME }}
 
   # Prepare secret blobs for each environment
   prepare-secrets:
     runs-on: ubuntu-latest
     outputs:
+      pr_blob: ${{ steps.pr.outputs.blob }}
       dev_blob: ${{ steps.dev.outputs.blob }}
       staging_blob: ${{ steps.staging.outputs.blob }}
       prod_blob: ${{ steps.prod.outputs.blob }}
     steps:
+      - id: pr
+        run: |
+          delimiter="$(openssl rand -hex 8)"
+          echo "blob<<$delimiter" >> $GITHUB_OUTPUT
+          echo "DATABASE_URL=${{ secrets.PR_DATABASE_URL }}" >> $GITHUB_OUTPUT
+          echo "OPENAI_API_KEY=${{ secrets.PR_OPENAI_API_KEY }}" >> $GITHUB_OUTPUT
+          echo "ANTHROPIC_API_KEY=${{ secrets.PR_ANTHROPIC_API_KEY }}" >> $GITHUB_OUTPUT
+          echo "$delimiter" >> $GITHUB_OUTPUT
+      
       - id: dev
         run: |
           delimiter="$(openssl rand -hex 8)"
           echo "blob<<$delimiter" >> $GITHUB_OUTPUT
-          echo "POSTGRES_URI=${{ secrets.DEV_POSTGRES_URI }}" >> $GITHUB_OUTPUT
+          echo "DATABASE_URL=${{ secrets.DEV_DATABASE_URL }}" >> $GITHUB_OUTPUT
           echo "OPENAI_API_KEY=${{ secrets.DEV_OPENAI_API_KEY }}" >> $GITHUB_OUTPUT
           echo "ANTHROPIC_API_KEY=${{ secrets.DEV_ANTHROPIC_API_KEY }}" >> $GITHUB_OUTPUT
           echo "$delimiter" >> $GITHUB_OUTPUT
@@ -76,7 +84,7 @@ jobs:
         run: |
           delimiter="$(openssl rand -hex 8)"
           echo "blob<<$delimiter" >> $GITHUB_OUTPUT
-          echo "POSTGRES_URI=${{ secrets.STAGING_POSTGRES_URI }}" >> $GITHUB_OUTPUT
+          echo "DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }}" >> $GITHUB_OUTPUT
           echo "OPENAI_API_KEY=${{ secrets.STAGING_OPENAI_API_KEY }}" >> $GITHUB_OUTPUT
           echo "ANTHROPIC_API_KEY=${{ secrets.STAGING_ANTHROPIC_API_KEY }}" >> $GITHUB_OUTPUT
           echo "$delimiter" >> $GITHUB_OUTPUT
@@ -85,7 +93,7 @@ jobs:
         run: |
           delimiter="$(openssl rand -hex 8)"
           echo "blob<<$delimiter" >> $GITHUB_OUTPUT
-          echo "POSTGRES_URI=${{ secrets.PROD_POSTGRES_URI }}" >> $GITHUB_OUTPUT
+          echo "DATABASE_URL=${{ secrets.PROD_DATABASE_URL }}" >> $GITHUB_OUTPUT
           echo "OPENAI_API_KEY=${{ secrets.PROD_OPENAI_API_KEY }}" >> $GITHUB_OUTPUT
           echo "ANTHROPIC_API_KEY=${{ secrets.PROD_ANTHROPIC_API_KEY }}" >> $GITHUB_OUTPUT
           echo "$delimiter" >> $GITHUB_OUTPUT
