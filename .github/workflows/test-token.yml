@@ -31,27 +31,31 @@ jobs:
           BOT_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           TENANTS_REPO_NAME: zerotouch-tenants
         run: |
+          set -x  # Enable debug output
           echo "Testing GitHub App token access..."
           echo "BOT_GITHUB_TOKEN is ${BOT_GITHUB_TOKEN:+set}"
+          echo "Token length: ${#BOT_GITHUB_TOKEN}"
           
           # Test direct clone first
           echo "Testing direct clone of zerotouch-tenants..."
-          if git clone https://x-access-token:${BOT_GITHUB_TOKEN}@github.com/bizmatters/zerotouch-tenants.git test-clone 2>&1; then
+          if git clone https://x-access-token:${BOT_GITHUB_TOKEN}@github.com/bizmatters/zerotouch-tenants.git test-clone; then
             echo "✅ Direct clone successful"
             ls -la test-clone/
             rm -rf test-clone
           else
-            echo "❌ Direct clone failed"
+            echo "❌ Direct clone failed with exit code: $?"
             echo "Testing token with GitHub API..."
-            curl -H "Authorization: Bearer ${BOT_GITHUB_TOKEN}" \
+            curl -v -H "Authorization: Bearer ${BOT_GITHUB_TOKEN}" \
                  -H "Accept: application/vnd.github+json" \
                  https://api.github.com/repos/bizmatters/zerotouch-tenants
+            exit 1
           fi
           
           # Make script executable
           chmod +x ./zerotouch-platform/scripts/bootstrap/preview/tenants/scripts/checkout-pr-claims.sh
           
-          # Run checkout script
+          # Run checkout script with debug
+          echo "Running checkout script..."
           ./zerotouch-platform/scripts/bootstrap/preview/tenants/scripts/checkout-pr-claims.sh pr intelligence-deepagents $(pwd)
           
           # Check if it worked
@@ -60,5 +64,6 @@ jobs:
             ls -la platform/deepagents-runtime/
           else
             echo "❌ FAILED: PR claims not found"
+            ls -la platform/ || echo "platform directory doesn't exist"
             exit 1
           fi
