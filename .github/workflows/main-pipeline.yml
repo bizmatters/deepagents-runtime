@@ -84,9 +84,9 @@ jobs:
         uses: ./.github/actions/setup-test-env
         with:
           github-token: ${{ steps.app-token.outputs.token }}
-          aws-role-arn: ${{ secrets.AWS_ROLE_ARN }}
+          aws-role-arn: ${{ vars.AWS_ROLE_ARN }}
           image-tag: ${{ needs.build.outputs.image_tag }}
-          tenants-repo-name: ${{ secrets.TENANTS_REPO_NAME }}
+          tenants-repo-name: ${{ vars.TENANTS_REPO_NAME }}
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
         
       - name: Run Integration Tests
@@ -121,9 +121,9 @@ jobs:
         uses: ./.github/actions/setup-test-env
         with:
           github-token: ${{ steps.app-token.outputs.token }}
-          aws-role-arn: ${{ secrets.AWS_ROLE_ARN }}
+          aws-role-arn: ${{ vars.AWS_ROLE_ARN }}
           image-tag: ${{ needs.build.outputs.image_tag }}
-          tenants-repo-name: ${{ secrets.TENANTS_REPO_NAME }}
+          tenants-repo-name: ${{ vars.TENANTS_REPO_NAME }}
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
         
       - name: Run Integration Tests
@@ -160,7 +160,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ap-south-1
       
       - name: Deploy to Dev
@@ -169,4 +169,4 @@ jobs:
           SERVICE_NAME: deepagents-runtime
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
           BOT_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-          TENANT_REPO_URL: https://github.com/bizmatters/zerotouch-tenants.git
+          TENANTS_REPO_NAME: ${{ vars.TENANTS_REPO_NAME }}
