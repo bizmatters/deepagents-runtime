@@ -137,36 +137,8 @@ jobs:
   release:
     needs: [build, test-nats-events, test-spec-generation]
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ vars.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-          owner: bizmatters
-          repositories: deepagents-runtime,spec-engine,zerotouch-tenants
-      
-      - name: Checkout Platform Scripts
-        uses: actions/checkout@v4
-        with:
-          repository: arun4infra/zerotouch-platform
-          ref: main
-      
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: ap-south-1
-      
-      - name: Deploy to Dev
-        run: ./scripts/release/deploy-direct.sh dev
-        env:
-          SERVICE_NAME: deepagents-runtime
-          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
-          BOT_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-          TENANTS_REPO_NAME: ${{ vars.TENANTS_REPO_NAME }}
+    uses: bizmatters/ci-workflow-templates/.github/workflows/release-pipeline.yml@main
+    with:
+      service_name: deepagents-runtime
+      image_tag: ${{ needs.build.outputs.image_tag }}
+      namespace: intelligence-deepagents
