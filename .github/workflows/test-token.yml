@@ -1,0 +1,50 @@
+name: Test GitHub App Token
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-token:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: bizmatters
+          repositories: deepagents-runtime,spec-engine,zerotouch-tenants
+      
+      - name: Checkout service repo
+        uses: actions/checkout@v4
+      
+      - name: Checkout platform repo
+        uses: actions/checkout@v4
+        with:
+          repository: arun4infra/zerotouch-platform
+          path: zerotouch-platform
+          ref: main
+      
+      - name: Test token access
+        env:
+          BOT_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          TENANTS_REPO_NAME: zerotouch-tenants
+        run: |
+          echo "Testing GitHub App token access..."
+          echo "BOT_GITHUB_TOKEN is ${BOT_GITHUB_TOKEN:+set}"
+          
+          # Make script executable
+          chmod +x ./zerotouch-platform/scripts/bootstrap/preview/tenants/scripts/checkout-pr-claims.sh
+          
+          # Run checkout script
+          ./zerotouch-platform/scripts/bootstrap/preview/tenants/scripts/checkout-pr-claims.sh pr intelligence-deepagents $(pwd)
+          
+          # Check if it worked
+          if [ -d "platform/deepagents-runtime" ]; then
+            echo "✅ SUCCESS: PR claims checked out successfully"
+            ls -la platform/deepagents-runtime/
+          else
+            echo "❌ FAILED: PR claims not found"
+            exit 1
+          fi
