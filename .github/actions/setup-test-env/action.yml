@@ -4,11 +4,11 @@ inputs:
   github-token:
     description: 'GitHub token for GHCR'
     required: true
-  aws-role-arn:
-    description: 'AWS role ARN'
-    required: true
   image-tag:
     description: 'Image tag to pull'
+    required: true
+  database-url:
+    description: 'Database connection URL'
     required: true
   tenants-repo-name:
     description: 'Tenants repo name'
@@ -20,12 +20,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ inputs.aws-role-arn }}
-        aws-region: ap-south-1
-        
     - name: Install yq
       shell: bash
       run: |
@@ -50,6 +44,7 @@ runs:
       shell: bash
       run: |
         echo "BOT_GITHUB_TOKEN=${{ inputs.github-token }}" >> $GITHUB_ENV
+        echo "DATABASE_URL=${{ inputs.database-url }}" >> $GITHUB_ENV
         echo "TENANTS_REPO_NAME=${{ inputs.tenants-repo-name }}" >> $GITHUB_ENV
         echo "OPENAI_API_KEY=${{ inputs.openai-api-key }}" >> $GITHUB_ENV
         echo "OVERRIDE_IMAGE_TAG=${{ inputs.image-tag }}" >> $GITHUB_ENV
