@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [ "main" ]
 
-permissions:
+  id-token: write      # Required for release workflow AWS deploymentpermissions:
   contents: read       # Required for checkout actions
   pull-requests: write # Required for test reporting
 
