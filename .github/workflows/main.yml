@@ -33,7 +33,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: |
-            ghcr.io/soloz-io/waypoint/deepagents-runtime:sha-${{ github.sha }}
-            ghcr.io/soloz-io/waypoint/deepagents-runtime:latest
+            ghcr.io/bizmatters/deepagents-runtime:sha-${{ github.sha }}
+            ghcr.io/bizmatters/deepagents-runtime:latest
           cache-from: type=gha,scope=deepagents-runtime
           cache-to: type=gha,mode=max,scope=deepagents-runtime
